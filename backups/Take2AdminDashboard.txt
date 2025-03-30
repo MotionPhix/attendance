@@ -1,0 +1,1631 @@
+<template>
+  <AppLayout title="Admin Dashboard">
+    <template #header>
+      <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+        Admin Dashboard
+      </h2>
+    </template>
+
+    <div class="py-12">
+      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <!-- Date and Quick Stats -->
+        <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 md:mb-0">
+            {{ currentDate }}
+          </h3>
+          <div class="flex space-x-2">
+            <span class="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+              <Users class="w-4 h-4 mr-1" />
+              {{ employeeStats.active }} Active Employees
+            </span>
+            <span class="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+              <Clock class="w-4 h-4 mr-1" />
+              {{ attendanceStats.today.present }} Present Today
+            </span>
+          </div>
+        </div>
+
+        <!-- Employee Stats -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Employee Overview
+              </h3>
+              <Link :href="route('admin.employees.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </Link>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <!-- Employee Count Cards -->
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div class="flex items-center">
+                  <div class="p-3 rounded-full bg-blue-500 bg-opacity-10">
+                    <Users class="h-6 w-6 text-blue-500" />
+                  </div>
+                  <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Employees</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ employeeStats.total }}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div class="flex items-center">
+                  <div class="p-3 rounded-full bg-green-500 bg-opacity-10">
+                    <UserCheck class="h-6 w-6 text-green-500" />
+                  </div>
+                  <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Active Employees</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ employeeStats.active }}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div class="flex items-center">
+                  <div class="p-3 rounded-full bg-amber-500 bg-opacity-10">
+                    <CalendarOff class="h-6 w-6 text-amber-500" />
+                  </div>
+                  <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">On Leave</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ employeeStats.on_leave }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Department Distribution -->
+            <div class="mt-6">
+              <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+                Department Distribution
+              </h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="h-64">
+                  <apexchart type="pie" :options="departmentChartOptions" :series="departmentChartSeries"></apexchart>
+                </div>
+                <div class="space-y-3">
+                  <div v-for="dept in employeeStats.by_department" :key="dept.department" class="flex justify-between items-center">
+                    <div class="flex items-center">
+                      <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: getDepartmentColor(dept.department) }"></div>
+                      <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ dept.department }}</span>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ dept.count }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Attendance Stats -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Today's Attendance
+              </h3>
+              <div class="text-sm text-gray-500 dark:text-gray-400">
+                {{ currentDate }}
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Present</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ attendanceStats.today.present }}</p>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Absent</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ attendanceStats.today.absent }}</p>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Late</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ attendanceStats.today.late }}</p>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Early Departure</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ attendanceStats.today.early_departure }}</p>
+              </div>
+            </div>
+            
+            <!-- Monthly Attendance Trends -->
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+                Monthly Attendance Trends
+              </h4>
+              <div class="h-80">
+                <apexchart type="line" :options="attendanceChartOptions" :series="attendanceChartSeries"></apexchart>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Salary Summary -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Salary Summary
+              </h3>
+              <div class="flex space-x-2">
+                <span class="text-sm text-gray-500 dark:text-gray-400">
+                  {{ currentMonth }}
+                </span>
+                <Link :href="route('admin.salaries.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                  View All
+                </Link>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Net Salary</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">
+                  {{ formatCurrency(salaryStats.total_net_amount) }}
+                </p>
+                <div class="mt-2 flex justify-between text-xs">
+                  <span class="text-gray-500 dark:text-gray-400">Processed: {{ salaryStats.processed_count }}</span>
+                  <span class="text-gray-500 dark:text-gray-400">Paid: {{ salaryStats.paid_count }}</span>
+                </div>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Base Salary</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">
+                  {{ formatCurrency(salaryStats.total_base_salary) }}
+                </p>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Adjustments</p>
+                <div class="flex justify-between mt-1">
+                  <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Bonuses</p>
+                    <p class="text-lg font-medium text-green-600 dark:text-green-400">
+                      +{{ formatCurrency(salaryStats.total_bonuses) }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Deductions</p>
+                    <p class="text-lg font-medium text-red-600 dark:text-red-400">
+                      -{{ formatCurrency(salaryStats.total_deductions) }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Overtime</p>
+                    <p class="text-lg font-medium text-blue-600 dark:text-blue-400">
+                      +{{ formatCurrency(salaryStats.total_overtime_pay) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Recent Activities -->
+              <div>
+                <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+                  Recent Activities
+                </h4>
+                <div class="space-y-3">
+                  <div v-for="(activity, index) in recentActivities" :key="index" 
+                       class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                    <div class="flex items-start">
+                      <div class="p-2 rounded-full" :class="getActivityIconClass(activity.type)">
+                        <component :is="getActivityIcon(activity.type)" class="h-4 w-4" />
+                      </div>
+                      <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {{ activity.user }}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ activity.details }}
+                        </p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          {{ formatDateTime(activity.time) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Top Performers -->
+              <div>
+                <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+                  Top Performers
+                </h4>
+                <div class="space-y-3">
+                  <div v-for="(performer, index) in topPerformers" :key="performer.user_id" 
+                       class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
+                        {{ index + 1 }}
+                      </div>
+                      <div class="ml-3 flex-grow">
+                        <div class="flex justify-between">
+                          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {{ performer.name }}
+                          </p>
+                          <p class="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                            {{ performer.attendance_rate }}%
+                          </p>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <span>Present: {{ performer.present_days }}/{{ performer.total_days }}</span>
+                          <span>Late: {{ performer.late_arrivals }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Pending Leave Requests -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Pending Leave Requests
+              </h3>
+              <Link :href="route('admin.leave-requests.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </Link>
+            </div>
+            
+            <div v-if="pendingLeaveRequests.length > 0" class="space-y-3">
+              <div v-for="request in pendingLeaveRequests" :key="request.id" 
+                   class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {{ request.user.name }}
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {{ request.leave_type }} leave for {{ request.duration_days }} days
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {{ formatDate(request.start_date) }} to {{ formatDate(request.end_date) }}
+                    </p>
+                  </div>
+                  <div class="flex space-x-2 mt-3 md:mt-0">
+                    <button class="px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-md text-xs font-medium">
+                      Approve
+                    </button>
+                    <button class="px-3 py-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-md text-xs font-medium">
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div v-else class="text-center py-8">
+              <ClipboardCheck class="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">No pending requests</h3>
+              <p class="text-gray-500 dark:text-gray-400 mt-1">All leave requests have been processed.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </AppLayout>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+import { Link } from '@inertiajs/vue3';
+import { 
+  Users, UserCheck, CalendarOff, Clock, ClipboardCheck,
+  LogIn, LogOut, Calendar, Award
+} from 'lucide-vue-next';
+import { useColorMode } from '@vueuse/core';
+import AppLayout from '@/Layouts/AppLayout.vue';
+import dayjs from 'dayjs';
+
+const props = defineProps({
+  employeeStats: Object,
+  attendanceStats: Object,
+  salaryStats: Object,
+  recentActivities: Array,
+  pendingLeaveRequests: Array,
+  topPerformers: Array,
+  currentDate: String,
+  currentMonth: String
+});
+
+const { isDark } = useColorMode();
+
+// Department chart
+const departmentColors = [
+  '#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', 
+  '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#0ea5e9'
+];
+
+const getDepartmentColor = (department) => {
+  const index = props.employeeStats.by_department.findIndex(d => d.department === department);
+  return departmentColors[index % departmentColors.length];
+};
+
+const departmentChartSeries = computed(() => {
+  return props.employeeStats.by_department.map(dept => dept.count);
+});
+
+const departmentChartOptions = computed(() => ({
+  chart: {
+    type: 'pie',
+    fontFamily: 'inherit',
+    foreColor: isDark.value ? '#CBD5E1' : '#475569',
+    toolbar: {
+      show: false
+    }
+  },
+  labels: props.employeeStats.by_department.map(dept => dept.department),
+  colors: departmentColors,
+  legend: {
+    show: false
+  },
+  dataLabels: {
+    enabled: false
+  },
+  tooltip: {
+    enabled: true,
+    theme: isDark.value ? 'dark' : 'light',
+  },
+  stroke: {
+    width: 2,
+    colors: isDark.value ? ['#1E293B'] : ['#FFFFFF']
+  },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '0%'
+      }
+    }
+  }
+}));
+
+// Attendance chart
+const attendanceChartSeries = computed(() => [
+  {
+    name: 'Attendance Rate',
+    type: 'line',
+    data: props.attendanceStats.monthly_trends.map(trend => trend.attendance_rate)
+  },
+  {
+    name: 'Late Arrivals',
+    type: 'column',
+    data: props.attendanceStats.monthly_trends.map(trend => trend.late_arrivals)
+  },
+  {
+    name: 'Early Departures',
+    type: 'column',
+    data: props.attendanceStats.monthly_trends.map(trend => trend.early_departures)
+  }
+]);
+
+const attendanceChartOptions = computed(() => ({
+  chart: {
+    type: 'line',
+    fontFamily: 'inherit',
+    foreColor: isDark.value ? '#CBD5E1' : '#475569',
+    toolbar: {
+      show: true
+    },
+    stacked: false
+  },
+  stroke: {
+    width: [3, 1, 1],
+    curve: 'smooth'
+  },
+  colors: ['#3b82f6', '#f59e0b', '#ef4444'],
+  title: {
+    text: 'Monthly Attendance Trends',
+    align: 'left',
+    style: {
+      fontSize: '14px',
+      fontWeight: 600,
+      color: isDark.value ? '#F1F5F9' : '#1E293B'
+    }
+  },
+  xaxis: {
+    categories: props.attendanceStats.monthly_trends.map(trend => trend.month),
+    labels: {
+      style: {
+        colors: isDark.value ? '#CBD5E1' : '#475569'
+      }
+    }
+  },
+  yaxis: [
+    {
+      title: {
+        text: 'Attendance Rate (%)',
+        style: {
+          color: isDark.value ? '#CBD5E1' : '#475569'
+        }
+      },
+      min: 0,
+      max: 100,
+      labels: {
+        style: {
+          colors: isDark.value ? '#CBD5E1' : '#475569'
+        }
+      }
+    },
+    {
+      opposite: true,
+      title: {
+        text: 'Count',
+        style: {
+          color: isDark.value ? '#CBD5E1' : '#475569'
+        }
+      },
+      min: 0,
+      labels: {
+        style: {
+          colors: isDark.value ? '#CBD5E1' : '#475569'
+        }
+      }
+    }
+  ],
+  tooltip: {
+    shared: true,
+    intersect: false,
+    theme: isDark.value ? 'dark' : 'light',
+    y: {
+      formatter: function (value, { seriesIndex }) {
+        if (seriesIndex === 0) {
+          return value.toFixed(1) + '%';
+        }
+        return value;
+      }
+    }
+  },
+  legend: {
+    position: 'top',
+    horizontalAlign: 'left',
+    offsetX: 40,
+    labels: {
+      colors: isDark.value ? '#CBD5E1' : '#475569'
+    }
+  },
+  grid: {
+    borderColor: isDark.value ? '#334155' : '#E2E8F0',
+    strokeDashArray: 4
+  }
+}));
+
+// Activity icons
+const getActivityIcon = (type) => {
+  switch (type) {
+    case 'check_in':
+      return LogIn;
+    case 'check_out':
+      return LogOut;
+    case 'leave_request':
+      return Calendar;
+    default:
+      return Award;
+  }
+};
+
+const getActivityIconClass = (type) => {
+  switch (type) {
+    case 'check_in':
+      return 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300';
+    case 'check_out':
+      return 'bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300';
+    case 'leave_request':
+      return 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300';
+    default:
+      return 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300';
+  }
+};
+
+// Formatting helpers
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(value);
+};
+
+const formatDate = (dateString) => {
+  return dayjs(dateString).format('MMM D, YYYY');
+};
+
+const formatDateTime = (dateTimeString) => {
+  return dayjs(dateTimeString).format('MMM D, YYYY h:mm A');
+};
+</script></qodoArtifact>
+
+
+Now, let's create the Department Index page for the admin section:
+
+
+ard">
+    <template #header>
+      <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+        Admin Dashboard
+      </h2>
+    </template>
+
+    <div class="py-12">
+      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <!-- Date and Quick Stats -->
+        <div class="mb-6 flex flex-wrap justify-between items-center">
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+              {{ currentDate }}
+            </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Welcome to the admin dashboard
+            </p>
+          </div>
+          <div class="flex space-x-2">
+            <Link :href="route('admin.salaries.generate')" class="btn-primary">
+              <Calculator class="w-4 h-4 mr-1" />
+              Generate Salaries
+            </Link>
+            <Link :href="route('admin.employees.create')" class="btn-secondary">
+              <UserPlus class="w-4 h-4 mr-1" />
+              Add Employee
+            </Link>
+          </div>
+        </div>
+
+        <!-- Employee Stats -->
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Employees</p>
+                <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ employeeStats.total }}</p>
+              </div>
+              <div class="p-2 bg-blue-50 dark:bg-blue-900 rounded-lg">
+                <Users class="w-6 h-6 text-blue-500 dark:text-blue-400" />
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Active Employees</p>
+                <p class="text-3xl font-bold text-green-600 dark:text-green-400">{{ employeeStats.active }}</p>
+              </div>
+              <div class="p-2 bg-green-50 dark:bg-green-900 rounded-lg">
+                <UserCheck class="w-6 h-6 text-green-500 dark:text-green-400" />
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">On Leave</p>
+                <p class="text-3xl font-bold text-amber-600 dark:text-amber-400">{{ employeeStats.on_leave }}</p>
+              </div>
+              <div class="p-2 bg-amber-50 dark:bg-amber-900 rounded-lg">
+                <UserMinus class="w-6 h-6 text-amber-500 dark:text-amber-400" />
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Departments</p>
+                <p class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ employeeStats.by_department.length }}</p>
+              </div>
+              <div class="p-2 bg-purple-50 dark:bg-purple-900 rounded-lg">
+                <Building2 class="w-6 h-6 text-purple-500 dark:text-purple-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Attendance -->
+        <div class="mb-6">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Today's Attendance</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+              <div class="flex flex-col items-center">
+                <div class="p-3 bg-green-50 dark:bg-green-900 rounded-full mb-2">
+                  <UserCheck class="w-6 h-6 text-green-500 dark:text-green-400" />
+                </div>
+                <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ attendanceStats.today.present }}</p>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Present</p>
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+              <div class="flex flex-col items-center">
+                <div class="p-3 bg-amber-50 dark:bg-amber-900 rounded-full mb-2">
+                  <Clock class="w-6 h-6 text-amber-500 dark:text-amber-400" />
+                </div>
+                <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ attendanceStats.today.late }}</p>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Late</p>
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+              <div class="flex flex-col items-center">
+                <div class="p-3 bg-orange-50 dark:bg-orange-900 rounded-full mb-2">
+                  <LogOut class="w-6 h-6 text-orange-500 dark:text-orange-400" />
+                </div>
+                <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ attendanceStats.today.early_departure }}</p>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Early Departure</p>
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+              <div class="flex flex-col items-center">
+                <div class="p-3 bg-red-50 dark:bg-red-900 rounded-full mb-2">
+                  <UserX class="w-6 h-6 text-red-500 dark:text-red-400" />
+                </div>
+                <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ attendanceStats.today.absent }}</p>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Absent</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Attendance Trends -->
+          <div class="lg:col-span-2 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Attendance Trends</h3>
+              <Link :href="route('admin.reports.attendance.monthly')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View Report
+              </Link>
+            </div>
+            <div class="h-80">
+              <apexchart
+                type="area"
+                height="100%"
+                :options="attendanceChartOptions"
+                :series="attendanceChartSeries"
+              ></apexchart>
+            </div>
+          </div>
+
+          <!-- Department Distribution -->
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Department Distribution</h3>
+              <Link :href="route('admin.departments.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </Link>
+            </div>
+            <div class="h-80">
+              <apexchart
+                type="pie"
+                height="100%"
+                :options="departmentChartOptions"
+                :series="departmentChartSeries"
+              ></apexchart>
+            </div>
+          </div>
+
+          <!-- Salary Summary -->
+          <div class="lg:col-span-2 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Salary Summary ({{ currentMonth }})</h3>
+              <Link :href="route('admin.salaries.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </Link>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Salary</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ formatCurrency(salaryStats.total_net_amount) }}</p>
+              </div>
+              <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Processed</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ salaryStats.processed_count }} / {{ employeeStats.active }}</p>
+              </div>
+              <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Paid</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ salaryStats.paid_count }} / {{ salaryStats.processed_count }}</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Base Salary</p>
+                <p class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ formatCurrency(salaryStats.total_base_salary) }}</p>
+              </div>
+              <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Deductions</p>
+                <p class="text-lg font-bold text-red-600 dark:text-red-400">-{{ formatCurrency(salaryStats.total_deductions) }}</p>
+              </div>
+              <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Bonuses</p>
+                <p class="text-lg font-bold text-green-600 dark:text-green-400">+{{ formatCurrency(salaryStats.total_bonuses) }}</p>
+              </div>
+              <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Overtime</p>
+                <p class="text-lg font-bold text-blue-600 dark:text-blue-400">+{{ formatCurrency(salaryStats.total_overtime_pay) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Activities -->
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Recent Activities</h3>
+            <div class="space-y-4 max-h-96 overflow-y-auto pr-2">
+              <div v-for="(activity, index) in recentActivities" :key="index" class="flex items-start space-x-3">
+                <div class="flex-shrink-0">
+                  <div v-if="activity.type === 'check_in'" class="p-2 bg-green-50 dark:bg-green-900 rounded-full">
+                    <LogIn class="w-4 h-4 text-green-500 dark:text-green-400" />
+                  </div>
+                  <div v-else-if="activity.type === 'check_out'" class="p-2 bg-blue-50 dark:bg-blue-900 rounded-full">
+                    <LogOut class="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                  </div>
+                  <div v-else-if="activity.type === 'leave_request'" class="p-2 bg-amber-50 dark:bg-amber-900 rounded-full">
+                    <Calendar class="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {{ activity.user }}
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ activity.details }}
+                  </p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500">
+                    {{ formatTimeAgo(activity.time) }}
+                  </p>
+                </div>
+                <div v-if="activity.type === 'leave_request'" class="flex-shrink-0">
+                  <span v-if="activity.status === 'pending'" class="px-2 py-1 text-xs rounded-full bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                    Pending
+                  </span>
+                  <span v-else-if="activity.status === 'approved'" class="px-2 py-1 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                    Approved
+                  </span>
+                  <span v-else-if="activity.status === 'rejected'" class="px-2 py-1 text-xs rounded-full bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
+                    Rejected
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pending Leave Requests & Top Performers -->
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Pending Leave Requests -->
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Pending Leave Requests</h3>
+              <Link :href="route('admin.leave-requests.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </Link>
+            </div>
+            <div v-if="pendingLeaveRequests.length > 0" class="space-y-4">
+              <div v-for="request in pendingLeaveRequests" :key="request.id" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ request.user.name }}</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ request.leave_type }} leave · {{ request.duration_days }} days
+                  </p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500">
+                    {{ formatDate(request.start_date) }} - {{ formatDate(request.end_date) }}
+                  </p>
+                </div>
+                <div class="flex space-x-2">
+                  <button class="p-2 bg-green-50 dark:bg-green-900 rounded-lg hover:bg-green-100 dark:hover:bg-green-800">
+                    <Check class="w-4 h-4 text-green-500 dark:text-green-400" />
+                  </button>
+                  <button class="p-2 bg-red-50 dark:bg-red-900 rounded-lg hover:bg-red-100 dark:hover:bg-red-800">
+                    <X class="w-4 h-4 text-red-500 dark:text-red-400" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="flex flex-col items-center justify-center py-6">
+              <Calendar class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-2" />
+              <p class="text-gray-500 dark:text-gray-400">No pending leave requests</p>
+            </div>
+          </div>
+
+          <!-- Top Performers -->
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Top Performers</h3>
+              <Link :href="route('admin.employees.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All Employees
+              </Link>
+            </div>
+            <div class="space-y-4">
+              <div v-for="(performer, index) in topPerformers" :key="performer.user_id" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="flex-shrink-0 mr-4">
+                  <div class="w-10 h-10 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full font-bold">
+                    {{ index + 1 }}
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ performer.name }}</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ performer.present_days }}/{{ performer.total_days }} days present
+                  </p>
+                </div>
+                <div class="flex-shrink-0 text-right">
+                  <p class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ performer.attendance_rate }}%</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ performer.late_arrivals }} late arrivals
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </AppLayout>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+import { Link } from '@inertiajs/vue3';
+import { 
+  Building2, Calculator, Calendar, Check, Clock, LogIn, LogOut, 
+  UserCheck, UserMinus, UserPlus, Users, UserX, X 
+} from 'lucide-vue-next';
+import AppLayout from '@/Layouts/AppLayout.vue';
+import { useTimeAgo } from '@vueuse/core';
+import dayjs from 'dayjs';
+
+const props = defineProps({
+  employeeStats: Object,
+  attendanceStats: Object,
+  salaryStats: Object,
+  recentActivities: Array,
+  pendingLeaveRequests: Array,
+  topPerformers: Array,
+  currentDate: String,
+  currentMonth: String,
+});
+
+// Format currency
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(value);
+};
+
+// Format date
+const formatDate = (dateString) => {
+  return dayjs(dateString).format('MMM D, YYYY');
+};
+
+// Format time ago
+const formatTimeAgo = (dateString) => {
+  const timeAgo = useTimeAgo(new Date(dateString));
+  return timeAgo.value;
+};
+
+// Attendance chart data
+const attendanceChartSeries = computed(() => [
+  {
+    name: 'Attendance Rate',
+    type: 'area',
+    data: props.attendanceStats.monthly_trends.map(trend => trend.attendance_rate)
+  },
+  {
+    name: 'Late Arrivals',
+    type: 'column',
+    data: props.attendanceStats.monthly_trends.map(trend => trend.late_arrivals)
+  },
+  {
+    name: 'Early Departures',
+    type: 'column',
+    data: props.attendanceStats.monthly_trends.map(trend => trend.early_departures)
+  }
+]);
+
+const attendanceChartOptions = computed(() => ({
+  chart: {
+    type: 'line',
+    stacked: false,
+    toolbar: {
+      show: false
+    },
+    fontFamily: 'inherit',
+  },
+  stroke: {
+    width: [3, 1, 1],
+    curve: 'smooth'
+  },
+  plotOptions: {
+    bar: {
+      columnWidth: '50%'
+    }
+  },
+  colors: ['#3b82f6', '#f59e0b', '#ef4444'],
+  fill: {
+    opacity: [0.2, 0.7, 0.7],
+    gradient: {
+      inverseColors: false,
+      shade: 'light',
+      type: "vertical",
+      opacityFrom: 0.85,
+      opacityTo: 0.55,
+    }
+  },
+  labels: props.attendanceStats.monthly_trends.map(trend => trend.month),
+  markers: {
+    size: 0
+  },
+  xaxis: {
+    type: 'category',
+    labels: {
+      style: {
+        colors: '#64748b'
+      }
+    }
+  },
+  yaxis: [
+    {
+      title: {
+        text: 'Attendance Rate (%)',
+        style: {
+          color: '#64748b'
+        }
+      },
+      min: 0,
+      max: 100,
+      labels: {
+        style: {
+          colors: '#64748b'
+        }
+      }
+    },
+    {
+      opposite: true,
+      title: {
+        text: 'Count',
+        style: {
+          color: '#64748b'
+        }
+      },
+      min: 0,
+      labels: {
+        style: {
+          colors: '#64748b'
+        }
+      }
+    }
+  ],
+  tooltip: {
+    shared: true,
+    intersect: false,
+    theme: 'light',
+    y: {
+      formatter: function (value, { seriesIndex }) {
+        if (seriesIndex === 0) {
+          return value.toFixed(1) + '%';
+        }
+        return value;
+      }
+    }
+  },
+  legend: {
+    position: 'top',
+    horizontalAlign: 'left',
+    offsetX: 40
+  }
+}));
+
+// Department chart data
+const departmentChartSeries = computed(() => 
+  props.employeeStats.by_department.map(dept => dept.count)
+);
+
+const departmentChartOptions = computed(() => ({
+  chart: {
+    type: 'pie',
+    fontFamily: 'inherit',
+  },
+  labels: props.employeeStats.by_department.map(dept => dept.department),
+  colors: [
+    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', 
+    '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'
+  ],
+  legend: {
+    position: 'bottom',
+    fontFamily: 'inherit',
+  },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '50%',
+        labels: {
+          show: true,
+          name: {
+            show: true,
+          },
+          value: {
+            show: true,
+            formatter: function (val) {
+              return val;
+            }
+          },
+          total: {
+            show: true,
+            formatter: function (w) {
+              return props.employeeStats.total;
+            }
+          }
+        }
+      }
+    }
+  },
+  responsive: [{
+    breakpoint: 480,
+    options: {
+      chart: {
+        height: 300
+      },
+      legend: {
+        position: 'bottom'
+      }
+    }
+  }]
+}));
+</script>
+
+<style scoped>
+.btn-primary {
+  @apply inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150;
+}
+</style></qodoArtifact>
+
+
+Now, let's create the Department Index page for the admin section:
+
+
+ Dashboard">
+    <template #header>
+      <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+        Admin Dashboard
+      </h2>
+    </template>
+
+    <div class="py-12">
+      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <!-- Date and Quick Actions -->
+        <div class="flex flex-wrap justify-between items-center mb-6">
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+              {{ currentDate }}
+            </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Welcome to the admin dashboard
+            </p>
+          </div>
+          <div class="flex space-x-2">
+            <Link :href="route('admin.salaries.generate')" class="btn-primary">
+              <DollarSign class="w-4 h-4 mr-1" />
+              Generate Salaries
+            </Link>
+            <Link :href="route('admin.employees.create')" class="btn-secondary">
+              <UserPlus class="w-4 h-4 mr-1" />
+              Add Employee
+            </Link>
+          </div>
+        </div>
+
+        <!-- Employee Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex items-center">
+              <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900 mr-4">
+                <Users class="h-6 w-6 text-blue-600 dark:text-blue-300" />
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Employees</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ employeeStats.total }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex items-center">
+              <div class="p-3 rounded-full bg-green-100 dark:bg-green-900 mr-4">
+                <UserCheck class="h-6 w-6 text-green-600 dark:text-green-300" />
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Active Employees</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ employeeStats.active }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex items-center">
+              <div class="p-3 rounded-full bg-amber-100 dark:bg-amber-900 mr-4">
+                <UserMinus class="h-6 w-6 text-amber-600 dark:text-amber-300" />
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">On Leave</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ employeeStats.on_leave }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex items-center">
+              <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900 mr-4">
+                <Building2 class="h-6 w-6 text-purple-600 dark:text-purple-300" />
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Departments</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ employeeStats.by_department.length }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Attendance -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Today's Attendance</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Present</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ attendanceStats.today.present }}</p>
+                  </div>
+                  <div class="p-2 rounded-full bg-green-100 dark:bg-green-900">
+                    <CheckCircle class="h-5 w-5 text-green-600 dark:text-green-300" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Absent</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ attendanceStats.today.absent }}</p>
+                  </div>
+                  <div class="p-2 rounded-full bg-red-100 dark:bg-red-900">
+                    <XCircle class="h-5 w-5 text-red-600 dark:text-red-300" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Late</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ attendanceStats.today.late }}</p>
+                  </div>
+                  <div class="p-2 rounded-full bg-amber-100 dark:bg-amber-900">
+                    <Clock class="h-5 w-5 text-amber-600 dark:text-amber-300" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Early Departure</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ attendanceStats.today.early_departure }}</p>
+                  </div>
+                  <div class="p-2 rounded-full bg-orange-100 dark:bg-orange-900">
+                    <LogOut class="h-5 w-5 text-orange-600 dark:text-orange-300" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Department Distribution</h3>
+            <div class="h-64">
+              <apexchart type="pie" :options="departmentChartOptions" :series="departmentChartSeries"></apexchart>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attendance Trends -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 mb-6">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Attendance Trends</h3>
+          <div class="h-80">
+            <apexchart type="line" :options="attendanceChartOptions" :series="attendanceChartSeries"></apexchart>
+          </div>
+        </div>
+
+        <!-- Salary Summary and Recent Activities -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div class="md:col-span-2 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Salary Summary ({{ currentMonth }})</h3>
+              <Link :href="route('admin.salaries.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </Link>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Base Salary</p>
+                <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ formatCurrency(salaryStats.total_base_salary) }}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Deductions</p>
+                <p class="text-xl font-semibold text-red-600 dark:text-red-400">{{ formatCurrency(salaryStats.total_deductions) }}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Bonuses</p>
+                <p class="text-xl font-semibold text-green-600 dark:text-green-400">{{ formatCurrency(salaryStats.total_bonuses) }}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Overtime</p>
+                <p class="text-xl font-semibold text-blue-600 dark:text-blue-400">{{ formatCurrency(salaryStats.total_overtime_pay) }}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Net Amount</p>
+                <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ formatCurrency(salaryStats.total_net_amount) }}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Processed / Paid</p>
+                <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  {{ salaryStats.processed_count }} / {{ salaryStats.paid_count }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Recent Activities</h3>
+              <button class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </button>
+            </div>
+            <div class="space-y-4">
+              <div v-for="(activity, index) in recentActivities.slice(0, 5)" :key="index" class="flex items-start space-x-3">
+                <div class="flex-shrink-0">
+                  <div v-if="activity.type === 'check_in'" class="p-2 rounded-full bg-green-100 dark:bg-green-900">
+                    <LogIn class="h-4 w-4 text-green-600 dark:text-green-300" />
+                  </div>
+                  <div v-else-if="activity.type === 'check_out'" class="p-2 rounded-full bg-blue-100 dark:bg-blue-900">
+                    <LogOut class="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                  </div>
+                  <div v-else-if="activity.type === 'leave_request'" class="p-2 rounded-full bg-purple-100 dark:bg-purple-900">
+                    <Calendar class="h-4 w-4 text-purple-600 dark:text-purple-300" />
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {{ activity.user }}
+                    <span v-if="activity.type === 'check_in'">checked in</span>
+                    <span v-else-if="activity.type === 'check_out'">checked out</span>
+                    <span v-else-if="activity.type === 'leave_request'">requested leave</span>
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ activity.details }}</p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500">{{ formatTime(activity.time) }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Performers and Pending Leave Requests -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Top Performers</h3>
+            <div class="space-y-4">
+              <div v-for="(performer, index) in topPerformers" :key="index" 
+                   class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="flex items-center space-x-3">
+                  <div class="flex-shrink-0">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                      <span class="text-blue-600 dark:text-blue-300 font-medium">{{ index + 1 }}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ performer.name }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      Present: {{ performer.present_days }}/{{ performer.total_days }} days
+                    </p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ performer.attendance_rate }}%</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Late: {{ performer.late_arrivals }} times
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Pending Leave Requests</h3>
+              <Link :href="route('admin.leave-requests.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </Link>
+            </div>
+            <div v-if="pendingLeaveRequests.length > 0" class="space-y-4">
+              <div v-for="request in pendingLeaveRequests" :key="request.id" 
+                   class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ request.user.name }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ request.leave_type }} leave for {{ request.duration_days }} days
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ formatDate(request.start_date) }} - {{ formatDate(request.end_date) }}
+                    </p>
+                  </div>
+                  <div class="flex space-x-2">
+                    <button class="p-1 rounded bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800">
+                      <Check class="h-4 w-4" />
+                    </button>
+                    <button class="p-1 rounded bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800">
+                      <X class="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center py-8">
+              <Calendar class="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">No pending requests</h3>
+              <p class="text-gray-500 dark:text-gray-400 mt-1">All leave requests have been processed.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </AppLayout>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+import { Link } from '@inertiajs/vue3';
+import { 
+  Building2, Calendar, Check, CheckCircle, Clock, DollarSign, LogIn, LogOut, 
+  UserCheck, UserMinus, UserPlus, Users, X, XCircle 
+} from 'lucide-vue-next';
+import AppLayout from '@/Layouts/AppLayout.vue';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+
+dayjs.extend(relativeTime);
+
+const props = defineProps({
+  employeeStats: Object,
+  attendanceStats: Object,
+  salaryStats: Object,
+  recentActivities: Array,
+  pendingLeaveRequests: Array,
+  topPerformers: Array,
+  currentDate: String,
+  currentMonth: String,
+});
+
+// Department chart data
+const departmentChartSeries = computed(() => {
+  return props.employeeStats.by_department.map(dept => dept.count);
+});
+
+const departmentChartOptions = computed(() => {
+  return {
+    chart: {
+      type: 'pie',
+      fontFamily: 'inherit',
+      foreColor: document.querySelector('html').classList.contains('dark') ? '#CBD5E1' : '#475569',
+    },
+    labels: props.employeeStats.by_department.map(dept => dept.department),
+    colors: [
+      '#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', 
+      '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1'
+    ],
+    legend: {
+      position: 'bottom',
+      horizontalAlign: 'center',
+      labels: {
+        colors: document.querySelector('html').classList.contains('dark') ? '#CBD5E1' : '#475569'
+      }
+    },
+    responsive: [{
+      breakpoint: 480,
+      options: {
+        chart: {
+          height: 300
+        },
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }],
+    tooltip: {
+      theme: document.querySelector('html').classList.contains('dark') ? 'dark' : 'light',
+    }
+  };
+});
+
+// Attendance trends chart data
+const attendanceChartSeries = computed(() => {
+  return [
+    {
+      name: 'Attendance Rate',
+      type: 'line',
+      data: props.attendanceStats.monthly_trends.map(trend => trend.attendance_rate)
+    },
+    {
+      name: 'Late Arrivals',
+      type: 'column',
+      data: props.attendanceStats.monthly_trends.map(trend => trend.late_arrivals)
+    },
+    {
+      name: 'Early Departures',
+      type: 'column',
+      data: props.attendanceStats.monthly_trends.map(trend => trend.early_departures)
+    }
+  ];
+});
+
+const attendanceChartOptions = computed(() => {
+  return {
+    chart: {
+      type: 'line',
+      stacked: false,
+      fontFamily: 'inherit',
+      foreColor: document.querySelector('html').classList.contains('dark') ? '#CBD5E1' : '#475569',
+      toolbar: {
+        show: false
+      }
+    },
+    stroke: {
+      width: [3, 1, 1],
+      curve: 'smooth'
+    },
+    plotOptions: {
+      bar: {
+        columnWidth: '50%'
+      }
+    },
+    colors: ['#3b82f6', '#f59e0b', '#ef4444'],
+    fill: {
+      opacity: [0.85, 0.75, 0.75],
+      gradient: {
+        inverseColors: false,
+        shade: 'light',
+        type: "vertical",
+        opacityFrom: 0.85,
+        opacityTo: 0.55,
+      }
+    },
+    markers: {
+      size: 0
+    },
+    xaxis: {
+      categories: props.attendanceStats.monthly_trends.map(trend => trend.month),
+      labels: {
+        style: {
+          colors: document.querySelector('html').classList.contains('dark') ? '#CBD5E1' : '#475569'
+        }
+      }
+    },
+    yaxis: [
+      {
+        title: {
+          text: 'Attendance Rate (%)',
+          style: {
+            color: document.querySelector('html').classList.contains('dark') ? '#CBD5E1' : '#475569'
+          }
+        },
+        min: 0,
+        max: 100,
+        labels: {
+          style: {
+            colors: document.querySelector('html').classList.contains('dark') ? '#CBD5E1' : '#475569'
+          }
+        }
+      },
+      {
+        opposite: true,
+        title: {
+          text: 'Count',
+          style: {
+            color: document.querySelector('html').classList.contains('dark') ? '#CBD5E1' : '#475569'
+          }
+        },
+        min: 0,
+        labels: {
+          style: {
+            colors: document.querySelector('html').classList.contains('dark') ? '#CBD5E1' : '#475569'
+          }
+        }
+      }
+    ],
+    tooltip: {
+      shared: true,
+      intersect: false,
+      theme: document.querySelector('html').classList.contains('dark') ? 'dark' : 'light',
+      y: {
+        formatter: function (value, { seriesIndex }) {
+          if (seriesIndex === 0) {
+            return value.toFixed(1) + '%';
+          }
+          return value;
+        }
+      }
+    },
+    legend: {
+      position: 'top',
+      horizontalAlign: 'left',
+      offsetX: 40,
+      labels: {
+        colors: document.querySelector('html').classList.contains('dark') ? '#CBD5E1' : '#475569'
+      }
+    },
+    grid: {
+      borderColor: document.querySelector('html').classList.contains('dark') ? '#334155' : '#E2E8F0',
+      strokeDashArray: 4
+    }
+  };
+});
+
+// Helper functions
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(value);
+};
+
+const formatTime = (dateTime) => {
+  const date = dayjs(dateTime);
+  if (date.isToday()) {
+    return date.format('HH:mm');
+  } else if (date.isYesterday()) {
+    return 'Yesterday ' + date.format('HH:mm');
+  } else {
+    return date.format('MMM D, HH:mm');
+  }
+};
+
+const formatDate = (date) => {
+  return dayjs(date).format('MMM D, YYYY');
+};
+</script>
+
+<style scoped>
+.btn-primary {
+  @apply inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150;
+}
+</style></qodoArtifact>
+
+
+Now, let's create the missing controllers for the employee features we mentioned in the routes. Let's start with the LeaveRequestController:
+
+

@@ -1,0 +1,419 @@
+
+<?php
+
+namespace App\Models;
+
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+
+class EmployeeProfile extends Model implements HasMedia
+{
+  use InteractsWithMedia;
+
+  /**
+   * The attributes that are mass assignable.
+   *
+   * @var array<string>
+   */
+  protected $fillable = [
+    'user_id',
+    'department_id',
+    'position',
+    'hire_date',
+    'base_salary',
+    'hourly_rate',
+    'status',
+  ];
+
+  /**
+   * The attributes that should be cast.
+   *
+   * @var array<string, string>
+   */
+  protected $casts = [
+    'hire_date' => 'date',
+    'base_salary' => 'decimal:2',
+    'hourly_rate' => 'decimal:2',
+  ];
+
+  /**
+   * Get the user that owns the profile.
+   */
+  public function user(): BelongsTo
+  {
+    return $this->belongsTo(User::class);
+  }
+
+  /**
+   * Get the department that the employee belongs to.
+   */
+  public function department(): BelongsTo
+  {
+    return $this->belongsTo(Department::class);
+  }
+
+  /**
+   * Get the leave requests for this employee.
+   */
+  public function leaveRequests(): HasMany
+  {
+    return $this->hasMany(LeaveRequest::class, 'user_id', 'user_id');
+  }
+
+  /**
+   * Get the performance reviews for this employee.
+   */
+  public function performanceReviews(): HasMany
+  {
+    return $this->hasMany(PerformanceReview::class, 'user_id', 'user_id');
+  }
+
+  /**
+   * Register media collections for the employee profile.
+   */
+  public function registerMediaCollections(): void
+  {
+    $this->addMediaCollection('profile_image')
+      ->singleFile();
+      
+    $this->addMediaCollection('documents')
+      ->useDisk('employee_documents');
+  }
+
+  /**
+   * Calculate the per-minute wage for salary deductions.
+   *
+   * @return float
+   */
+  public function getPerMinuteRate(): float
+  {
+    if (!$this->hourly_rate) {
+      // If hourly rate is not set, calculate from monthly salary
+      // Assuming 22 working days per month, 8 hours per day
+      return $this->base_salary / (22 * 8 * 60);
+    }
+
+    // Otherwise use the hourly rate
+    return $this->hourly_rate / 60;
+  }
+
+  /**
+   * Calculate salary for a given month with deductions and bonuses.
+   *
+   * @param int $month
+   * @param int $year
+   * @return array<string, mixed>
+   */
+  public function calculateSalary(int $month, int $year): array
+  {
+    $baseAmount = $this->base_salary;
+    $deductions = 0;
+    $bonuses = 0;
+    $overtimePay = 0;
+
+    // Get work schedule to determine standard hours
+    $defaultSchedule = WorkSchedule::where('department_id', $this->department_id)
+      ->where('is_default', true)
+      ->first();
+
+    $standardDailyHours = $defaultSchedule
+      ? (strtotime($defaultSchedule->end_time) - strtotime($defaultSchedule->start_time)) / 3600 - ($defaultSchedule->break_duration / 60)
+      : 8; // Default to 8 hours if no schedule is set
+
+    // Calculate total standard hours for the month
+    $startDate = now()->setYear($year)->setMonth($month)->startOfMonth();
+    $endDate = now()->setYear($year)->setMonth($month)->endOfMonth();
+
+    // Get attendance logs for the month
+    $attendanceLogs = AttendanceLog::where('user_id', $this->user_id)
+      ->whereBetween('check_in_time', [$startDate, $endDate])
+      ->get();
+
+    foreach ($attendanceLogs as $log) {
+      // Calculate late minutes deductions
+      if ($log->late_minutes > 0) {
+        $deductions += $log->late_minutes * $this->getPerMinuteRate();
+      }
+
+      // Calculate early departure deductions
+      if ($log->early_departure_minutes > 0) {
+        $deductions += $log->early_departure_minutes * $this->getPerMinuteRate();
+      }
+
+      // Calculate overtime if check-out time exists
+      if ($log->check_out_time) {
+        $hoursWorked = (strtotime($log->check_out_time) - strtotime($log->check_in_time)) / 3600;
+
+        // If worked more than standard hours, calculate overtime
+        if ($hoursWorked > $standardDailyHours) {
+          $overtimeHours = $hoursWorked - $standardDailyHours;
+          // Assuming overtime is paid at 1.5x hourly rate
+          $overtimePay += $overtimeHours * $this->hourly_rate * 1.5;
+        }
+      }
+    }
+
+    // Get leave deductions
+    $leaveDeduction = $this->calculateLeaveDeductions($month, $year);
+    $deductions += $leaveDeduction;
+
+    // Calculate performance bonuses if applicable
+    $performanceBonuses = $this->calculatePerformanceBonuses($month, $year);
+    $bonuses += $performanceBonuses;
+
+    // Calculate tax withholding (simplified example)
+    $taxDeduction = $this->calculateTaxDeduction($baseAmount + $overtimePay + $bonuses);
+    $deductions += $taxDeduction;
+
+    // Calculate net amount
+    $netAmount = $baseAmount - $deductions + $bonuses + $overtimePay;
+
+    return [
+      'base_amount' => $baseAmount,
+      'deductions' => $deductions,
+      'bonuses' => $bonuses,
+      'overtime_pay' => $overtimePay,
+      'tax_deduction' => $taxDeduction,
+      'leave_deduction' => $leaveDeduction,
+      'performance_bonuses' => $performanceBonuses,
+      'net_amount' => $netAmount,
+    ];
+  }
+
+  /**
+   * Calculate leave deductions for a given month.
+   *
+   * @param int $month
+   * @param int $year
+   * @return float
+   */
+  public function calculateLeaveDeductions(int $month, int $year): float
+  {
+    $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth();
+    $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+    
+    // Get unpaid leaves for the month
+    $unpaidLeaves = LeaveRequest::where('user_id', $this->user_id)
+      ->where('status', 'approved')
+      ->where('leave_type', 'unpaid')
+      ->where(function ($query) use ($startDate, $endDate) {
+        $query->whereBetween('start_date', [$startDate, $endDate])
+              ->orWhereBetween('end_date', [$startDate, $endDate]);
+      })
+      ->get();
+
+    $totalDeduction = 0;
+
+    foreach ($unpaidLeaves as $leave) {
+      // Calculate days that fall within the specified month
+      $leaveStart = max($leave->start_date, $startDate);
+      $leaveEnd = min($leave->end_date, $endDate);
+      
+      $leaveDays = $leaveStart->diffInDaysFiltered(function (Carbon $date) {
+        return !$date->isWeekend(); // Skip weekends
+      }, $leaveEnd) + 1; // +1 to include the end date
+      
+      // Calculate deduction based on daily rate
+      $dailyRate = $this->base_salary / 22; // Assuming 22 working days per month
+      $totalDeduction += $leaveDays * $dailyRate;
+    }
+
+    return $totalDeduction;
+  }
+
+  /**
+   * Calculate performance bonuses for a given month.
+   *
+   * @param int $month
+   * @param int $year
+   * @return float
+   */
+  public function calculatePerformanceBonuses(int $month, int $year): float
+  {
+    $bonus = 0;
+    
+    // Get performance reviews for the last quarter
+    $threeMonthsAgo = Carbon::createFromDate($year, $month, 1)->subMonths(3);
+    $latestReview = PerformanceReview::where('user_id', $this->user_id)
+      ->where('created_at', '>=', $threeMonthsAgo)
+      ->orderBy('created_at', 'desc')
+      ->first();
+    
+    if ($latestReview) {
+      // Example of a bonus structure based on review score
+      switch ($latestReview->rating) {
+        case 5: // Exceptional
+          $bonus = $this->base_salary * 0.1; // 10% bonus
+          break;
+        case 4: // Exceeds expectations
+          $bonus = $this->base_salary * 0.05; // 5% bonus
+          break;
+        case 3: // Meets expectations
+          $bonus = $this->base_salary * 0.02; // 2% bonus
+          break;
+      }
+    }
+    
+    return $bonus;
+  }
+
+  /**
+   * Calculate tax withholding (simplified example).
+   *
+   * @param float $grossIncome
+   * @return float
+   */
+  public function calculateTaxDeduction(float $grossIncome): float
+  {
+    // Simplified progressive tax calculation
+    // In a real application, this would be more complex based on tax brackets
+    if ($grossIncome <= 1000) {
+      return $grossIncome * 0.1; // 10% tax rate
+    } elseif ($grossIncome <= 3000) {
+      return 100 + ($grossIncome - 1000) * 0.15; // 15% on amount over 1000
+    } else {
+      return 100 + 300 + ($grossIncome - 3000) * 0.2; // 20% on amount over 3000
+    }
+  }
+
+  /**
+   * Calculate remaining leave balance for the current year.
+   *
+   * @return array<string, mixed>
+   */
+  public function calculateLeaveBalance(): array
+  {
+    $currentYear = now()->year;
+    $startOfYear = Carbon::createFromDate($currentYear, 1, 1)->startOfYear();
+    $today = now();
+
+    // Default annual leave allowance (can be moved to a settings table)
+    $annualLeaveAllowance = 21; // 21 days per year
+    $sickLeaveAllowance = 10; // 10 days per year
+    
+    // Calculate years of service for potential extra leave
+    $yearsOfService = $this->hire_date->diffInYears($today);
+    
+    // Additional leave based on years of service (example policy)
+    if ($yearsOfService >= 5) {
+      $annualLeaveAllowance += 5; // +5 days for 5+ years of service
+    } elseif ($yearsOfService >= 3) {
+      $annualLeaveAllowance += 3; // +3 days for 3+ years of service
+    } elseif ($yearsOfService >= 1) {
+      $annualLeaveAllowance += 1; // +1 day for 1+ year of service
+    }
+
+    // Calculate prorated allowance if hired mid-year
+    if ($this->hire_date->year == $currentYear && $this->hire_date > $startOfYear) {
+      $remainingMonths = 12 - $this->hire_date->month + 1; // Including hire month
+      $annualLeaveAllowance = round(($annualLeaveAllowance / 12) * $remainingMonths);
+      $sickLeaveAllowance = round(($sickLeaveAllowance / 12) * $remainingMonths);
+    }
+
+    // Get used leave days for the current year
+    $usedAnnualLeave = LeaveRequest::where('user_id', $this->user_id)
+      ->where('status', 'approved')
+      ->where('leave_type', 'annual')
+      ->whereYear('start_date', $currentYear)
+      ->sum('duration_days');
+
+    $usedSickLeave = LeaveRequest::where('user_id', $this->user_id)
+      ->where('status', 'approved')
+      ->where('leave_type', 'sick')
+      ->whereYear('start_date', $currentYear)
+      ->sum('duration_days');
+
+    // Calculate remaining balance
+    $remainingAnnualLeave = max(0, $annualLeaveAllowance - $usedAnnualLeave);
+    $remainingSickLeave = max(0, $sickLeaveAllowance - $usedSickLeave);
+
+    return [
+      'annual_leave' => [
+        'allowance' => $annualLeaveAllowance,
+        'used' => $usedAnnualLeave,
+        'remaining' => $remainingAnnualLeave
+      ],
+      'sick_leave' => [
+        'allowance' => $sickLeaveAllowance,
+        'used' => $usedSickLeave,
+        'remaining' => $remainingSickLeave
+      ]
+    ];
+  }
+
+  /**
+   * Get the employee's attendance summary for a specific period.
+   *
+   * @param Carbon|null $startDate
+   * @param Carbon|null $endDate
+   * @return array<string, mixed>
+   */
+  public function getAttendanceSummary(?Carbon $startDate = null, ?Carbon $endDate = null): array
+  {
+    $startDate = $startDate ?? now()->startOfMonth();
+    $endDate = $endDate ?? now()->endOfMonth();
+
+    $logs = AttendanceLog::where('user_id', $this->user_id)
+      ->whereBetween('check_in_time', [$startDate, $endDate])
+      ->get();
+
+    $totalDays = $startDate->diffInDaysFiltered(function (Carbon $date) {
+      return !$date->isWeekend(); // Skip weekends
+    }, $endDate) + 1; // +1 to include end date
+
+    $presentDays = $logs->count();
+    $lateDays = $logs->where('late_minutes', '>', 0)->count();
+    $earlyDepartures = $logs->where('early_departure_minutes', '>', 0)->count();
+    $absentDays = $totalDays - $presentDays;
+
+    // Calculate total hours worked
+    $totalMinutesWorked = 0;
+    foreach ($logs as $log) {
+      if ($log->check_out_time) {
+        $totalMinutesWorked += Carbon::parse($log->check_in_time)
+          ->diffInMinutes(Carbon::parse($log->check_out_time));
+      }
+    }
+    $totalHoursWorked = round($totalMinutesWorked / 60, 1);
+
+    // Calculate total overtime hours
+    $totalOvertimeHours = 0;
+    $defaultSchedule = WorkSchedule::where('department_id', $this->department_id)
+      ->where('is_default', true)
+      ->first();
+
+    $standardDailyHours = $defaultSchedule
+      ? (strtotime($defaultSchedule->end_time) - strtotime($defaultSchedule->start_time)) / 3600 - ($defaultSchedule->break_duration / 60)
+      : 8;
+
+    foreach ($logs as $log) {
+      if ($log->check_out_time) {
+        $hoursWorked = Carbon::parse($log->check_in_time)
+          ->diffInMinutes(Carbon::parse($log->check_out_time)) / 60;
+        
+        if ($hoursWorked > $standardDailyHours) {
+          $totalOvertimeHours += $hoursWorked - $standardDailyHours;
+        }
+      }
+    }
+
+    return [
+      'period' => [
+        'start_date' => $startDate->toDateString(),
+        'end_date' => $endDate->toDateString(),
+      ],
+      'total_working_days' => $totalDays,
+      'present_days' => $presentDays,
+      'absent_days' => $absentDays,
+      'late_arrivals' => $lateDays,
+      'early_departures' => $earlyDepartures,
+      'attendance_rate' => $totalDays > 0 ? round(($presentDays / $totalDays) * 100, 1) : 0,
+      'total_hours_worked' => $totalHoursWorked,
+      'total_overtime_hours' => round($totalOvertimeHours, 1),
+    ];
+  }
+}

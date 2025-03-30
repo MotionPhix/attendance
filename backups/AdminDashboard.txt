@@ -1,0 +1,549 @@
+<template>
+  <AppLayout title="Admin Dashboard">
+    <template #header>
+      <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+        Admin Dashboard
+      </h2>
+    </template>
+
+    <div class="py-12">
+      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <!-- Date and Quick Stats -->
+        <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 md:mb-0">
+            {{ currentDate }}
+          </h3>
+          <div class="flex space-x-2">
+            <span class="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+              <Users class="w-4 h-4 mr-1" />
+              {{ employeeStats.active }} Active Employees
+            </span>
+            <span class="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+              <Clock class="w-4 h-4 mr-1" />
+              {{ attendanceStats.today.present }} Present Today
+            </span>
+          </div>
+        </div>
+
+        <!-- Employee Stats -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Employee Overview
+              </h3>
+              <Link :href="route('admin.employees.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </Link>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <!-- Employee Count Cards -->
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div class="flex items-center">
+                  <div class="p-3 rounded-full bg-blue-500 bg-opacity-10">
+                    <Users class="h-6 w-6 text-blue-500" />
+                  </div>
+                  <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Employees</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ employeeStats.total }}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div class="flex items-center">
+                  <div class="p-3 rounded-full bg-green-500 bg-opacity-10">
+                    <UserCheck class="h-6 w-6 text-green-500" />
+                  </div>
+                  <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Active Employees</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ employeeStats.active }}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div class="flex items-center">
+                  <div class="p-3 rounded-full bg-amber-500 bg-opacity-10">
+                    <CalendarOff class="h-6 w-6 text-amber-500" />
+                  </div>
+                  <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">On Leave</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ employeeStats.on_leave }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Department Distribution -->
+            <div class="mt-6">
+              <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+                Department Distribution
+              </h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="h-64">
+                  <apexchart type="pie" :options="departmentChartOptions" :series="departmentChartSeries"></apexchart>
+                </div>
+                <div class="space-y-3">
+                  <div v-for="dept in employeeStats.by_department" :key="dept.department" class="flex justify-between items-center">
+                    <div class="flex items-center">
+                      <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: getDepartmentColor(dept.department) }"></div>
+                      <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ dept.department }}</span>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ dept.count }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Attendance Stats -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Today's Attendance
+              </h3>
+              <div class="text-sm text-gray-500 dark:text-gray-400">
+                {{ currentDate }}
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Present</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ attendanceStats.today.present }}</p>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Absent</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ attendanceStats.today.absent }}</p>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Late</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ attendanceStats.today.late }}</p>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Early Departure</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ attendanceStats.today.early_departure }}</p>
+              </div>
+            </div>
+            
+            <!-- Monthly Attendance Trends -->
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+                Monthly Attendance Trends
+              </h4>
+              <div class="h-80">
+                <apexchart type="line" :options="attendanceChartOptions" :series="attendanceChartSeries"></apexchart>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Salary Summary -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Salary Summary
+              </h3>
+              <div class="flex space-x-2">
+                <span class="text-sm text-gray-500 dark:text-gray-400">
+                  {{ currentMonth }}
+                </span>
+                <Link :href="route('admin.salaries.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                  View All
+                </Link>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Net Salary</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">
+                  {{ formatCurrency(salaryStats.total_net_amount) }}
+                </p>
+                <div class="mt-2 flex justify-between text-xs">
+                  <span class="text-gray-500 dark:text-gray-400">Processed: {{ salaryStats.processed_count }}</span>
+                  <span class="text-gray-500 dark:text-gray-400">Paid: {{ salaryStats.paid_count }}</span>
+                </div>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Base Salary</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">
+                  {{ formatCurrency(salaryStats.total_base_salary) }}
+                </p>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Adjustments</p>
+                <div class="flex justify-between mt-1">
+                  <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Bonuses</p>
+                    <p class="text-lg font-medium text-green-600 dark:text-green-400">
+                      +{{ formatCurrency(salaryStats.total_bonuses) }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Deductions</p>
+                    <p class="text-lg font-medium text-red-600 dark:text-red-400">
+                      -{{ formatCurrency(salaryStats.total_deductions) }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Overtime</p>
+                    <p class="text-lg font-medium text-blue-600 dark:text-blue-400">
+                      +{{ formatCurrency(salaryStats.total_overtime_pay) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Recent Activities -->
+              <div>
+                <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+                  Recent Activities
+                </h4>
+                <div class="space-y-3">
+                  <div v-for="(activity, index) in recentActivities" :key="index" 
+                       class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                    <div class="flex items-start">
+                      <div class="p-2 rounded-full" :class="getActivityIconClass(activity.type)">
+                        <component :is="getActivityIcon(activity.type)" class="h-4 w-4" />
+                      </div>
+                      <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {{ activity.user }}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ activity.details }}
+                        </p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          {{ formatDateTime(activity.time) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Top Performers -->
+              <div>
+                <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+                  Top Performers
+                </h4>
+                <div class="space-y-3">
+                  <div v-for="(performer, index) in topPerformers" :key="performer.user_id" 
+                       class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
+                        {{ index + 1 }}
+                      </div>
+                      <div class="ml-3 flex-grow">
+                        <div class="flex justify-between">
+                          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {{ performer.name }}
+                          </p>
+                          <p class="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                            {{ performer.attendance_rate }}%
+                          </p>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <span>Present: {{ performer.present_days }}/{{ performer.total_days }}</span>
+                          <span>Late: {{ performer.late_arrivals }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Pending Leave Requests -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Pending Leave Requests
+              </h3>
+              <Link :href="route('admin.leave-requests.index')" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </Link>
+            </div>
+            
+            <div v-if="pendingLeaveRequests.length > 0" class="space-y-3">
+              <div v-for="request in pendingLeaveRequests" :key="request.id" 
+                   class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {{ request.user.name }}
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {{ request.leave_type }} leave for {{ request.duration_days }} days
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {{ formatDate(request.start_date) }} to {{ formatDate(request.end_date) }}
+                    </p>
+                  </div>
+                  <div class="flex space-x-2 mt-3 md:mt-0">
+                    <button class="px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-md text-xs font-medium">
+                      Approve
+                    </button>
+                    <button class="px-3 py-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-md text-xs font-medium">
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div v-else class="text-center py-8">
+              <ClipboardCheck class="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">No pending requests</h3>
+              <p class="text-gray-500 dark:text-gray-400 mt-1">All leave requests have been processed.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </AppLayout>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+import { Link } from '@inertiajs/vue3';
+import { 
+  Users, UserCheck, CalendarOff, Clock, ClipboardCheck,
+  LogIn, LogOut, Calendar, Award
+} from 'lucide-vue-next';
+import { useColorMode } from '@vueuse/core';
+import AppLayout from '@/Layouts/AppLayout.vue';
+import dayjs from 'dayjs';
+
+const props = defineProps({
+  employeeStats: Object,
+  attendanceStats: Object,
+  salaryStats: Object,
+  recentActivities: Array,
+  pendingLeaveRequests: Array,
+  topPerformers: Array,
+  currentDate: String,
+  currentMonth: String
+});
+
+const { isDark } = useColorMode();
+
+// Department chart
+const departmentColors = [
+  '#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', 
+  '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#0ea5e9'
+];
+
+const getDepartmentColor = (department) => {
+  const index = props.employeeStats.by_department.findIndex(d => d.department === department);
+  return departmentColors[index % departmentColors.length];
+};
+
+const departmentChartSeries = computed(() => {
+  return props.employeeStats.by_department.map(dept => dept.count);
+});
+
+const departmentChartOptions = computed(() => ({
+  chart: {
+    type: 'pie',
+    fontFamily: 'inherit',
+    foreColor: isDark.value ? '#CBD5E1' : '#475569',
+    toolbar: {
+      show: false
+    }
+  },
+  labels: props.employeeStats.by_department.map(dept => dept.department),
+  colors: departmentColors,
+  legend: {
+    show: false
+  },
+  dataLabels: {
+    enabled: false
+  },
+  tooltip: {
+    enabled: true,
+    theme: isDark.value ? 'dark' : 'light',
+  },
+  stroke: {
+    width: 2,
+    colors: isDark.value ? ['#1E293B'] : ['#FFFFFF']
+  },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '0%'
+      }
+    }
+  }
+}));
+
+// Attendance chart
+const attendanceChartSeries = computed(() => [
+  {
+    name: 'Attendance Rate',
+    type: 'line',
+    data: props.attendanceStats.monthly_trends.map(trend => trend.attendance_rate)
+  },
+  {
+    name: 'Late Arrivals',
+    type: 'column',
+    data: props.attendanceStats.monthly_trends.map(trend => trend.late_arrivals)
+  },
+  {
+    name: 'Early Departures',
+    type: 'column',
+    data: props.attendanceStats.monthly_trends.map(trend => trend.early_departures)
+  }
+]);
+
+const attendanceChartOptions = computed(() => ({
+  chart: {
+    type: 'line',
+    fontFamily: 'inherit',
+    foreColor: isDark.value ? '#CBD5E1' : '#475569',
+    toolbar: {
+      show: true
+    },
+    stacked: false
+  },
+  stroke: {
+    width: [3, 1, 1],
+    curve: 'smooth'
+  },
+  colors: ['#3b82f6', '#f59e0b', '#ef4444'],
+  title: {
+    text: 'Monthly Attendance Trends',
+    align: 'left',
+    style: {
+      fontSize: '14px',
+      fontWeight: 600,
+      color: isDark.value ? '#F1F5F9' : '#1E293B'
+    }
+  },
+  xaxis: {
+    categories: props.attendanceStats.monthly_trends.map(trend => trend.month),
+    labels: {
+      style: {
+        colors: isDark.value ? '#CBD5E1' : '#475569'
+      }
+    }
+  },
+  yaxis: [
+    {
+      title: {
+        text: 'Attendance Rate (%)',
+        style: {
+          color: isDark.value ? '#CBD5E1' : '#475569'
+        }
+      },
+      min: 0,
+      max: 100,
+      labels: {
+        style: {
+          colors: isDark.value ? '#CBD5E1' : '#475569'
+        }
+      }
+    },
+    {
+      opposite: true,
+      title: {
+        text: 'Count',
+        style: {
+          color: isDark.value ? '#CBD5E1' : '#475569'
+        }
+      },
+      min: 0,
+      labels: {
+        style: {
+          colors: isDark.value ? '#CBD5E1' : '#475569'
+        }
+      }
+    }
+  ],
+  tooltip: {
+    shared: true,
+    intersect: false,
+    theme: isDark.value ? 'dark' : 'light',
+    y: {
+      formatter: function (value, { seriesIndex }) {
+        if (seriesIndex === 0) {
+          return value.toFixed(1) + '%';
+        }
+        return value;
+      }
+    }
+  },
+  legend: {
+    position: 'top',
+    horizontalAlign: 'left',
+    offsetX: 40,
+    labels: {
+      colors: isDark.value ? '#CBD5E1' : '#475569'
+    }
+  },
+  grid: {
+    borderColor: isDark.value ? '#334155' : '#E2E8F0',
+    strokeDashArray: 4
+  }
+}));
+
+// Activity icons
+const getActivityIcon = (type) => {
+  switch (type) {
+    case 'check_in':
+      return LogIn;
+    case 'check_out':
+      return LogOut;
+    case 'leave_request':
+      return Calendar;
+    default:
+      return Award;
+  }
+};
+
+const getActivityIconClass = (type) => {
+  switch (type) {
+    case 'check_in':
+      return 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300';
+    case 'check_out':
+      return 'bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300';
+    case 'leave_request':
+      return 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300';
+    default:
+      return 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300';
+  }
+};
+
+// Formatting helpers
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(value);
+};
+
+const formatDate = (dateString) => {
+  return dayjs(dateString).format('MMM D, YYYY');
+};
+
+const formatDateTime = (dateTimeString) => {
+  return dayjs(dateTimeString).format('MMM D, YYYY h:mm A');
+};
+</script>
