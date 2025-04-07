@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AttendanceLog;
 use App\Models\Department;
 use App\Models\Employee;
+use App\Models\LeaveRequest;
+use App\Models\SalaryRecord;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +50,15 @@ class EmployeeController extends Controller
     return Inertia::render('admin/employees/Show', [
       'employee' => $employee,
       'departments' => Department::all(),
+      'attendanceRecords' => AttendanceLog::where('user_id', $employee->user_id)
+        ->latest('check_in_time')
+        ->paginate(10),
+      'leaveRequests' => LeaveRequest::where('user_id', $employee->user_id)
+        ->latest()
+        ->paginate(10),
+      'salaryRecords' => SalaryRecord::where('user_id', $employee->user_id)
+        ->latest()
+        ->paginate(10),
     ]);
   }
 
