@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class LeaveRequest extends Model
+class LeaveRequest extends Model implements HasMedia
 {
-  use HasFactory;
+  use HasFactory, InteractsWithMedia;
 
   /**
    * The attributes that are mass assignable.
@@ -19,12 +21,13 @@ class LeaveRequest extends Model
     'user_id',
     'start_date',
     'end_date',
-    'leave_type',
-    'duration_days',
+    'leave_type_id',
+    'total_days',
     'reason',
     'status',
-    'approved_by',
-    'rejection_reason',
+    'reviewed_by',
+    'review_notes',
+    'submitted_at',
   ];
 
   /**
@@ -35,7 +38,9 @@ class LeaveRequest extends Model
   protected $casts = [
     'start_date' => 'date',
     'end_date' => 'date',
-    'duration_days' => 'integer',
+    'total_days' => 'integer',
+    'submitted_at' => 'datetime',
+    'reviewed_at' => 'datetime'
   ];
 
   /**
@@ -46,12 +51,19 @@ class LeaveRequest extends Model
     return $this->belongsTo(User::class);
   }
 
-  /**
-   * Get the user who approved/rejected the leave request.
-   */
-  public function approver(): BelongsTo
+  public function leaveType(): BelongsTo
   {
-    return $this->belongsTo(User::class, 'approved_by');
+    return $this->belongsTo(LeaveType::class);
+  }
+
+  public function reviewer(): BelongsTo
+  {
+    return $this->belongsTo(User::class, 'reviewed_by');
+  }
+
+  public function registerMediaCollections(): void
+  {
+    $this->addMediaCollection('attachments');
   }
 
   /**
@@ -88,17 +100,6 @@ class LeaveRequest extends Model
   }
 
   /**
-   * Scope a query to only include cancelled leave requests.
-   *
-   * @param \Illuminate\Database\Eloquent\Builder $query
-   * @return \Illuminate\Database\Eloquent\Builder
-   */
-  public function scopeCancelled($query)
-  {
-    return $query->where('status', 'cancelled');
-  }
-
-  /**
    * Check if the leave request is pending.
    *
    * @return bool
@@ -126,15 +127,5 @@ class LeaveRequest extends Model
   public function isRejected(): bool
   {
     return $this->status === 'rejected';
-  }
-
-  /**
-   * Check if the leave request is cancelled.
-   *
-   * @return bool
-   */
-  public function isCancelled(): bool
-  {
-    return $this->status === 'cancelled';
   }
 }

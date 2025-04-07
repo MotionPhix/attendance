@@ -16,12 +16,13 @@ return new class extends Migration
       $table->foreignId('user_id')->constrained()->onDelete('cascade');
       $table->date('start_date');
       $table->date('end_date');
-      $table->string('leave_type'); // annual, sick, personal, unpaid
-      $table->integer('duration_days');
-      $table->text('reason');
+      $table->string('leave_type_id'); // annual, sick, personal, unpaid
+      $table->integer('total_days');
+      $table->text('review_notes')->nullable();
       $table->string('status')->default('pending'); // pending, approved, rejected, cancelled
-      $table->foreignId('approved_by')->nullable()->constrained('users');
-      $table->text('rejection_reason')->nullable();
+      $table->foreignId('reviewed_by')->nullable()->constrained('users');
+      $table->timestamp('submitted_at')->nullable();
+      $table->timestamp('reviewed_at')->nullable();
       $table->timestamps();
     });
   }
