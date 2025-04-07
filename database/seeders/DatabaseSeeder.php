@@ -48,7 +48,7 @@ class DatabaseSeeder extends Seeder
 
     // Create regular employee
     $employee = User::create([
-      'name' => 'Test Employee',
+      'name' => 'Employee User',
       'email' => 'employee@example.com',
       'password' => Hash::make('password'),
     ]);

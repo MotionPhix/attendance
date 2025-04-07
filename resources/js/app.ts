@@ -1,4 +1,5 @@
 import '../css/app.css';
+import 'v-calendar/style.css';
 
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -8,6 +9,7 @@ import { ZiggyVue } from 'ziggy-js';
 import { renderApp, ModalLink } from '@inertiaui/modal-vue'
 import { createPinia } from 'pinia'
 import VueApexCharts from "vue3-apexcharts";
+import { setupCalendar, Calendar, DatePicker } from 'v-calendar';
 
 import { initializeTheme } from './composables/useAppearance';
 
@@ -37,8 +39,11 @@ createInertiaApp({
       .use(plugin)
       .use(ZiggyVue)
       .use(pinia)
+      .use(setupCalendar, {})
       .use(VueApexCharts)
       .component('ModalTrigger', ModalLink)
+      .component('VCalendar', Calendar)
+      .component('VDatePicker', DatePicker)
       .mount(el);
   },
   progress: {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/MainAppLayout.vue'
 import {
@@ -10,8 +10,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -20,8 +18,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Check, Clock, X } from 'lucide-vue-next'
+import { Check, CalendarOff, X } from 'lucide-vue-next'
 import { toast } from 'vue-sonner';
+import EmptyState from '@/components/EmptyState.vue';
 
 interface LeaveRequest {
   id: number
@@ -51,7 +50,7 @@ interface LeaveRequest {
   attachments?: Array<{
     id: number
     name: string
-    path: string
+    url: string
   }>
 }
 
@@ -78,6 +77,22 @@ interface Props {
 
 const props = defineProps<Props>()
 
+const hasRequests = computed(() => props.requests.data.length > 0)
+
+const emptyStateMessage = computed(() => {
+  if (status.value || dateRange.value.start || dateRange.value.end) {
+    return {
+      title: 'No matching leave requests',
+      description: 'Try adjusting your filters or clear them to see all leave requests.'
+    }
+  }
+
+  return {
+    title: 'No leave requests yet',
+    description: 'When employees submit leave requests, they will appear here.'
+  }
+})
+
 const showDialog = ref(false)
 const selectedRequest = ref<LeaveRequest | null>(null)
 const reviewStatus = ref<'approved' | 'rejected'>('approved')
@@ -85,14 +100,19 @@ const reviewNotes = ref('')
 const processing = ref(false)
 
 const status = ref(props.filters.status)
-const dateRange = ref(props.filters.date_range)
+
+// Date range for v-calendar
+const dateRange = ref({
+  start: props.filters.date_range.from ? new Date(props.filters.date_range.from) : null,
+  end: props.filters.date_range.to ? new Date(props.filters.date_range.to) : null
+})
 
 // Filter handlers
 const updateFilters = () => {
   router.get(route('admin.leave-requests.index'), {
     status: status.value,
-    from: dateRange.value.from,
-    to: dateRange.value.to
+    from: dateRange.value.start ? formatDateForServer(dateRange.value.start) : null,
+    to: dateRange.value.end ? formatDateForServer(dateRange.value.end) : null
   }, {
     preserveState: true,
     preserveScroll: true
@@ -136,6 +156,10 @@ const formatDate = (date: string) => {
   })
 }
 
+const formatDateForServer = (date: Date) => {
+  return date.toISOString().split('T')[0]
+}
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'approved':
@@ -144,6 +168,13 @@ const getStatusColor = (status: string) => {
       return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400'
     default:
       return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400'
+  }
+}
+
+const handleDayClick = (_day: any, event: Event) => {
+  if (event.target instanceof HTMLElement) {
+    console.log(event);
+    event.target.blur()
   }
 }
 </script>
@@ -155,15 +186,18 @@ const getStatusColor = (status: string) => {
     <div class="container py-6">
       <div class="flex items-center justify-between">
         <h2 class="text-2xl font-semibold tracking-tight">
-          Leave Requests
+          Leave requests
         </h2>
 
         <!-- Filters -->
         <div class="flex items-center gap-4">
-          <Select v-model="status">
+          <Select
+            v-model="status"
+            @update:model-value="updateFilters">
             <SelectTrigger class="w-[180px]">
-              <SelectValue placeholder="Filter by status" />
+              <SelectValue placeholder="All Status" />
             </SelectTrigger>
+
             <SelectContent>
               <SelectItem :value="null">All Status</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
@@ -172,35 +206,46 @@ const getStatusColor = (status: string) => {
             </SelectContent>
           </Select>
 
-          <Calendar
-            v-model="dateRange"
-            mode="range"
-            class="rounded-md border"
-          />
+          <VDatePicker
+            v-model.range="dateRange"
+            color="blue"
+            @input="updateFilters"
+            @dayclick="handleDayClick">
+            <template #default="{ inputValue, inputEvents }">
+              <div class="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  v-on="inputEvents.start"
+                  class="w-[180px] justify-start text-left font-normal">
+                  {{ inputValue.start || 'Start date' }}
+                </Button>
 
-          <Button
-            variant="outline"
-            @click="updateFilters"
-          >
-            Apply Filters
-          </Button>
+                <span class="text-muted-foreground">to</span>
+
+                <Button
+                  variant="outline"
+                  v-on="inputEvents.end"
+                  class="w-[180px] justify-start text-left font-normal">
+                  {{ inputValue.end || 'End date' }}
+                </Button>
+              </div>
+            </template>
+          </VDatePicker>
         </div>
       </div>
 
       <!-- Requests Grid -->
-      <div class="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div v-if="hasRequests" class="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <div
           v-for="request in requests.data"
           :key="request.id"
-          class="rounded-lg border bg-card p-6 text-card-foreground shadow-sm dark:border-gray-800"
-        >
+          class="rounded-lg border bg-card p-6 text-card-foreground shadow-sm dark:border-gray-800">
           <div class="flex items-start justify-between">
             <div class="flex items-center gap-3">
               <img
                 :src="request.user.avatar"
                 :alt="request.user.name"
-                class="h-10 w-10 rounded-full"
-              >
+                class="h-10 w-10 rounded-full">
               <div>
                 <h3 class="font-medium">{{ request.user.name }}</h3>
                 <p class="text-sm text-muted-foreground">
@@ -211,8 +256,7 @@ const getStatusColor = (status: string) => {
 
             <span
               class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium"
-              :class="getStatusColor(request.status)"
-            >
+              :class="getStatusColor(request.status)">
               {{ request.status }}
             </span>
           </div>
@@ -237,41 +281,44 @@ const getStatusColor = (status: string) => {
 
             <div
               v-if="request.attachments?.length"
-              class="flex gap-2"
-            >
+              class="flex gap-2">
               <a
                 v-for="attachment in request.attachments"
                 :key="attachment.id"
-                :href="attachment.path"
+                :href="attachment.url"
                 target="_blank"
-                class="text-sm text-blue-600 hover:underline dark:text-blue-400"
-              >
+                class="text-sm text-blue-600 hover:underline dark:text-blue-400">
                 {{ attachment.name }}
               </a>
             </div>
           </div>
 
-          <div class="mt-4 flex justify-end gap-2">
+          <div class="mt-4">
             <Button
               v-if="request.status === 'pending'"
               variant="outline"
-              size="sm"
               class="w-full"
-              @click="openReviewDialog(request)"
-            >
+              @click="openReviewDialog(request)">
               Review Request
             </Button>
+
             <Button
               v-else
               variant="ghost"
-              size="sm"
               class="w-full"
-              @click="openReviewDialog(request)"
-            >
+              @click="openReviewDialog(request)">
               View Details
             </Button>
           </div>
         </div>
+      </div>
+
+      <div v-else class="mt-6">
+        <EmptyState
+          :title="emptyStateMessage.title"
+          :description="emptyStateMessage.description"
+          :icon="CalendarOff"
+        />
       </div>
 
       <!-- Review Dialog -->
@@ -283,19 +330,21 @@ const getStatusColor = (status: string) => {
 
           <div
             v-if="selectedRequest"
-            class="space-y-4"
-          >
+            class="space-y-4">
             <div class="rounded-lg border p-4 dark:border-gray-800">
               <h4 class="font-medium">
                 {{ selectedRequest.user.name }}
               </h4>
+
               <p class="mt-1 text-sm text-muted-foreground">
                 {{ selectedRequest.leave_type.name }} Leave Request
               </p>
+
               <p class="mt-2 text-sm">
                 {{ formatDate(selectedRequest.start_date) }} - {{ formatDate(selectedRequest.end_date) }}
                 ({{ selectedRequest.total_days }} days)
               </p>
+
               <p class="mt-2 text-sm">
                 {{ selectedRequest.reason }}
               </p>
@@ -306,8 +355,7 @@ const getStatusColor = (status: string) => {
                 <Button
                   :variant="reviewStatus === 'approved' ? 'default' : 'outline'"
                   class="w-full"
-                  @click="reviewStatus = 'approved'"
-                >
+                  @click="reviewStatus = 'approved'">
                   <Check class="mr-2 h-4 w-4" />
                   Approve
                 </Button>
@@ -315,8 +363,7 @@ const getStatusColor = (status: string) => {
                 <Button
                   :variant="reviewStatus === 'rejected' ? 'destructive' : 'outline'"
                   class="w-full"
-                  @click="reviewStatus = 'rejected'"
-                >
+                  @click="reviewStatus = 'rejected'">
                   <X class="mr-2 h-4 w-4" />
                   Reject
                 </Button>
@@ -331,14 +378,12 @@ const getStatusColor = (status: string) => {
 
             <div
               v-else
-              class="rounded-lg border p-4 dark:border-gray-800"
-            >
+              class="rounded-lg border p-4 dark:border-gray-800">
               <div class="flex items-center gap-2">
                 <span class="text-sm font-medium">Status:</span>
                 <span
                   class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium"
-                  :class="getStatusColor(selectedRequest.status)"
-                >
+                  :class="getStatusColor(selectedRequest.status)">
                   {{ selectedRequest.status }}
                 </span>
               </div>
@@ -347,6 +392,7 @@ const getStatusColor = (status: string) => {
                 <p class="text-sm text-muted-foreground">
                   Reviewed by {{ selectedRequest.reviewed_by.name }}
                 </p>
+
                 <p v-if="selectedRequest.review_notes" class="mt-1 text-sm">
                   {{ selectedRequest.review_notes }}
                 </p>
@@ -357,16 +403,15 @@ const getStatusColor = (status: string) => {
           <DialogFooter>
             <Button
               variant="outline"
-              @click="showDialog = false"
-            >
+              @click="showDialog = false">
               {{ selectedRequest?.status === 'pending' ? 'Cancel' : 'Close' }}
             </Button>
+
             <Button
               v-if="selectedRequest?.status === 'pending'"
               :variant="reviewStatus === 'rejected' ? 'destructive' : 'default'"
               :disabled="processing"
-              @click="handleReview"
-            >
+              @click="handleReview">
               Confirm
             </Button>
           </DialogFooter>

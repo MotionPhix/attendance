@@ -49,7 +49,7 @@ class LeaveRequestController extends Controller
     // Get leave balance
     $leaveBalance = $this->getLeaveBalance($user->id);
 
-    return Inertia::render('LeaveRequests/Index', [
+    return Inertia::render('leave-requests/Index', [
       'leaveRequests' => $leaveRequests,
       'leaveBalance' => $leaveBalance,
       'filters' => [
@@ -84,7 +84,7 @@ class LeaveRequestController extends Controller
     $user = Auth::user();
     $leaveBalance = $this->getLeaveBalance($user->id);
 
-    return Inertia::render('LeaveRequests/Create', [
+    return Inertia::render('leave-requests/Create', [
       'leaveBalance' => $leaveBalance,
       'leaveTypes' => [
         'annual' => 'Annual Leave',
@@ -150,7 +150,7 @@ class LeaveRequestController extends Controller
   {
     $this->authorize('view', $leaveRequest);
 
-    return Inertia::render('LeaveRequests/Show', [
+    return Inertia::render('leave-requests/Show', [
       'leaveRequest' => $leaveRequest,
       'leaveTypes' => [
         'annual' => 'Annual Leave',
@@ -180,7 +180,7 @@ class LeaveRequestController extends Controller
     $user = Auth::user();
     $leaveBalance = $this->getLeaveBalance($user->id);
 
-    return Inertia::render('LeaveRequests/Edit', [
+    return Inertia::render('leave-requests/Edit', [
       'leaveRequest' => $leaveRequest,
       'leaveBalance' => $leaveBalance,
       'leaveTypes' => [
