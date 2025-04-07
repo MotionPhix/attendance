@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
-class EmployeeProfile extends Model implements HasMedia
+class Employee extends Model implements HasMedia
 {
   use InteractsWithMedia;
 
@@ -20,10 +20,12 @@ class EmployeeProfile extends Model implements HasMedia
     'user_id',
     'department_id',
     'position',
-    'hire_date',
-    'base_salary',
-    'hourly_rate',
+    'employee_id',
+    'join_date',
     'status',
+    'phone',
+    'address',
+    'emergency_contact',
   ];
 
   /**
@@ -32,9 +34,8 @@ class EmployeeProfile extends Model implements HasMedia
    * @var array<string, string>
    */
   protected $casts = [
-    'hire_date' => 'date',
-    'base_salary' => 'decimal:2',
-    'hourly_rate' => 'decimal:2',
+    'join_date' => 'date',
+    'emergency_contact' => 'array',
   ];
 
   /**

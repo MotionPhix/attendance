@@ -126,7 +126,7 @@
 
 <script setup lang="ts">
 import { DocumentIcon } from '@heroicons/vue/24/outline';
-import AppLayout from '@/Layouts/AppLayout.vue';
+import AppLayout from '@/layouts/AppLayout.vue';
 import ClockInOutButton from '@/Components/Attendance/ClockInOutButton.vue';
 import { router } from '@inertiajs/vue3';
 import dayjs from 'dayjs';

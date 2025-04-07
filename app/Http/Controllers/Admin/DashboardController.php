@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceLog;
-use App\Models\EmployeeProfile;
+use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\SalaryRecord;
 use App\Models\User;
@@ -27,10 +27,10 @@ class DashboardController extends Controller
     $currentYear = $today->year;
 
     // Employee statistics
-    $totalEmployees = EmployeeProfile::count();
-    $activeEmployees = EmployeeProfile::where('status', 'active')->count();
-    $onLeaveEmployees = EmployeeProfile::where('status', 'on_leave')->count();
-    $departmentCounts = EmployeeProfile::select('department_id', DB::raw('count(*) as employee_count'))
+    $totalEmployees = Employee::count();
+    $activeEmployees = Employee::where('status', 'active')->count();
+    $onLeaveEmployees = Employee::where('status', 'on_leave')->count();
+    $departmentCounts = Employee::select('department_id', DB::raw('count(*) as employee_count'))
       ->groupBy('department_id')
       ->with('department:id,name')
       ->get()

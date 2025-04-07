@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceLog;
 use App\Models\Department;
-use App\Models\EmployeeProfile;
+use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\SalaryRecord;
 use App\Models\User;
@@ -151,7 +151,7 @@ class SalaryController extends Controller
     $prevYear = $previousMonth->year;
 
     // Get employee counts
-    $totalEmployees = EmployeeProfile::where('status', 'active')->count();
+    $totalEmployees = Employee::where('status', 'active')->count();
     $processedEmployees = SalaryRecord::where('month', $currentMonth)
       ->where('year', $currentYear)
       ->count();

@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\AttendanceLog;
 use App\Models\Department;
-use App\Models\EmployeeProfile;
+use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\SalaryRecord;
 use App\Models\User;
@@ -37,7 +37,7 @@ class ReportService
     $logs = $query->get();
 
     // Get all active employees
-    $employeeQuery = EmployeeProfile::where('status', 'active');
+    $employeeQuery = Employee::where('status', 'active');
     if ($departmentId) {
       $employeeQuery->where('department_id', $departmentId);
     }
@@ -117,7 +117,7 @@ class ReportService
     $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth();
 
     // Get all active employees
-    $employeeQuery = EmployeeProfile::where('status', 'active');
+    $employeeQuery = Employee::where('status', 'active');
     if ($departmentId) {
       $employeeQuery->where('department_id', $departmentId);
     }

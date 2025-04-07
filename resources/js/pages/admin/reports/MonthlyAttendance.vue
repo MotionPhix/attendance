@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import AppLayout from '@/Layouts/AppLayout.vue';
+import AppLayout from '@/layouts/AppLayout.vue';
 import AttendanceChart from '@/Components/Attendance/AttendanceChart.vue';
 import dayjs from 'dayjs';
 

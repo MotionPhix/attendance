@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\AttendanceLog;
-use App\Models\EmployeeProfile;
+use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\SalaryRecord;
 use App\Models\User;
@@ -212,10 +212,10 @@ class SalaryCalculationService
   /**
    * Get the work schedule for an employee.
    *
-   * @param EmployeeProfile $employeeProfile
+   * @param Employee $employeeProfile
    * @return WorkSchedule|null
    */
-  protected function getWorkSchedule(EmployeeProfile $employeeProfile): ?WorkSchedule
+  protected function getWorkSchedule(Employee $employeeProfile): ?WorkSchedule
   {
     return WorkSchedule::where('department_id', $employeeProfile->department_id)
       ->where('is_default', true)
@@ -245,11 +245,11 @@ class SalaryCalculationService
    * Calculate attendance-based deductions and overtime pay.
    *
    * @param \Illuminate\Database\Eloquent\Collection $attendanceLogs
-   * @param EmployeeProfile $employeeProfile
+   * @param Employee $employeeProfile
    * @param float $standardDailyHours
    * @return array<string, float>
    */
-  protected function calculateAttendanceDeductionsAndOvertime($attendanceLogs, EmployeeProfile $employeeProfile, float $standardDailyHours): array
+  protected function calculateAttendanceDeductionsAndOvertime($attendanceLogs, Employee $employeeProfile, float $standardDailyHours): array
   {
     $deductions = 0;
     $overtimePay = 0;

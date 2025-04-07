@@ -3,12 +3,12 @@
 namespace Database\Seeders;
 
 use App\Models\Department;
-use App\Models\EmployeeProfile;
+use App\Models\Employee;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
-class EmployeeProfileSeeder extends Seeder
+class EmployeeSeeder extends Seeder
 {
   /**
    * Run the database seeds.
@@ -47,7 +47,7 @@ class EmployeeProfileSeeder extends Seeder
       // Random hire date between 1-5 years ago
       $hireDate = Carbon::now()->subDays(rand(30, 1825));
 
-      EmployeeProfile::create([
+      Employee::create([
         'user_id' => $user->id,
         'department_id' => $department->id,
         'position' => $position,

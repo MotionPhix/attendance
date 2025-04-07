@@ -54,7 +54,7 @@ class User extends Authenticatable
    */
   public function employeeProfile(): HasOne
   {
-    return $this->hasOne(EmployeeProfile::class);
+    return $this->hasOne(Employee::class);
   }
 
   /**
@@ -165,5 +165,15 @@ class User extends Authenticatable
   public function isAdmin(): bool
   {
     return $this->hasRole('admin');
+  }
+
+  /**
+   * Check if user has admin-level permissions.
+   *
+   * @return bool
+   */
+  public function hasAdminAccess(): bool
+  {
+    return $this->hasAnyRole(['admin', 'hr', 'manager']);
   }
 }

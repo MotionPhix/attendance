@@ -55,7 +55,7 @@ class DatabaseSeeder extends Seeder
     $employee->assignRole('employee');
 
     // Create employee profiles for users
-    $this->call(EmployeeProfileSeeder::class);
+    $this->call(EmployeeSeeder::class);
 
     // Create test data if not in production
     if (app()->environment() !== 'production') {

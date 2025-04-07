@@ -3,440 +3,127 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\EmployeeProfileRequest;
 use App\Models\Department;
-use App\Models\EmployeeProfile;
+use App\Models\Employee;
 use App\Models\User;
-use App\Services\AttendanceService;
-use App\Services\SalaryCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Spatie\Permission\Models\Role;
 
 class EmployeeController extends Controller
 {
-  /**
-   * Display a listing of the employees.
-   *
-   * @param Request $request
-   * @return \Inertia\Response
-   */
   public function index(Request $request)
   {
-    $query = User::query()
-      ->with(['employeeProfile.department', 'roles'])
-      ->whereHas('employeeProfile');
-
-    // Search functionality
-    if ($request->has('search')) {
-      $search = $request->input('search');
-      $query->where(function ($q) use ($search) {
-        $q->where('name', 'like', "%{$search}%")
-          ->orWhere('email', 'like', "%{$search}%")
-          ->orWhereHas('employeeProfile', function ($q) use ($search) {
-            $q->where('position', 'like', "%{$search}%");
-          });
+    $query = Employee::with(['user', 'department'])
+      ->when($request->search, function ($query, $search) {
+        $query->whereHas('user', function ($query) use ($search) {
+          $query->where('name', 'like', "%{$search}%")
+            ->orWhere('email', 'like', "%{$search}%");
+        })->orWhere('employee_id', 'like', "%{$search}%");
+      })
+      ->when($request->department, function ($query, $department) {
+        $query->where('department_id', $department);
+      })
+      ->when($request->status, function ($query, $status) {
+        $query->where('status', $status);
       });
-    }
 
-    // Department filter
-    if ($request->has('department') && $request->input('department')) {
-      $query->whereHas('employeeProfile', function ($q) use ($request) {
-        $q->where('department_id', $request->input('department'));
-      });
-    }
-
-    // Status filter
-    if ($request->has('status') && $request->input('status')) {
-      $query->whereHas('employeeProfile', function ($q) use ($request) {
-        $q->where('status', $request->input('status'));
-      });
-    }
-
-    // Sorting
-    $sortField = $request->input('sort_field', 'name');
-    $sortDirection = $request->input('sort_direction', 'asc');
-
-    if ($sortField === 'department') {
-      $query->join('employee_profiles', 'users.id', '=', 'employee_profiles.user_id')
-        ->join('departments', 'employee_profiles.department_id', '=', 'departments.id')
-        ->orderBy('departments.name', $sortDirection)
-        ->select('users.*');
-    } elseif ($sortField === 'position') {
-      $query->join('employee_profiles', 'users.id', '=', 'employee_profiles.user_id')
-        ->orderBy('employee_profiles.position', $sortDirection)
-        ->select('users.*');
-    } else {
-      $query->orderBy($sortField, $sortDirection);
-    }
-
-    // Pagination
     $employees = $query->paginate(10)
       ->withQueryString();
 
-    // Get departments for filter
-    $departments = Department::orderBy('name')->get(['id', 'name']);
-
-    return Inertia::render('Admin/Employees/Index', [
+    return Inertia::render('admin/employees/Index', [
       'employees' => $employees,
-      'departments' => $departments,
-      'filters' => [
-        'search' => $request->input('search', ''),
-        'department' => $request->input('department', ''),
-        'status' => $request->input('status', ''),
-        'sort_field' => $sortField,
-        'sort_direction' => $sortDirection,
-      ],
-      'statuses' => [
-        'active' => 'Active',
-        'on_leave' => 'On Leave',
-        'suspended' => 'Suspended',
-        'terminated' => 'Terminated',
-      ],
+      'departments' => Department::all(),
+      'filters' => $request->only(['search', 'department', 'status']),
     ]);
   }
 
-  /**
-   * Show the form for creating a new employee.
-   *
-   * @return \Inertia\Response
-   */
-  public function create()
+  public function show(Employee $employee)
   {
-    $departments = Department::orderBy('name')->get(['id', 'name']);
-    $roles = Role::orderBy('name')->get(['id', 'name']);
+    $employee->load(['user', 'department']);
 
-    return Inertia::render('Admin/Employees/Create', [
-      'departments' => $departments,
-      'roles' => $roles,
-      'statuses' => [
-        'active' => 'Active',
-        'on_leave' => 'On Leave',
-        'suspended' => 'Suspended',
-        'terminated' => 'Terminated',
-      ],
+    return Inertia::render('admin/employees/Show', [
+      'employee' => $employee,
+      'departments' => Department::all(),
     ]);
   }
 
-  /**
-   * Store a newly created employee in storage.
-   *
-   * @param Request $request
-   * @return \Illuminate\Http\RedirectResponse
-   */
   public function store(Request $request)
   {
     $request->validate([
-      'name' => 'required|string|max:255',
-      'email' => 'required|string|email|max:255|unique:users',
-      'password' => 'required|string|min:8',
-      'department_id' => 'required|exists:departments,id',
-      'position' => 'required|string|max:255',
-      'hire_date' => 'required|date',
-      'base_salary' => 'required|numeric|min:0',
-      'hourly_rate' => 'nullable|numeric|min:0',
-      'status' => 'required|in:active,on_leave,suspended,terminated',
-      'roles' => 'nullable|array',
-      'roles.*' => 'exists:roles,id',
+      'name' => ['required', 'string', 'max:255'],
+      'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+      'department_id' => ['required', 'exists:departments,id'],
+      'position' => ['required', 'string', 'max:255'],
+      'employee_id' => ['required', 'string', 'max:255', 'unique:employees'],
+      'join_date' => ['required', 'date'],
     ]);
 
-    DB::beginTransaction();
-
-    try {
-      // Create user
+    return DB::transaction(function () use ($request) {
       $user = User::create([
         'name' => $request->name,
         'email' => $request->email,
-        'password' => Hash::make($request->password),
+        'password' => Hash::make(Str::random(12)),
       ]);
 
-      // Create employee profile
-      EmployeeProfile::create([
+      $user->assignRole('employee');
+
+      $employee = Employee::create([
         'user_id' => $user->id,
         'department_id' => $request->department_id,
         'position' => $request->position,
-        'hire_date' => $request->hire_date,
-        'base_salary' => $request->base_salary,
-        'hourly_rate' => $request->hourly_rate,
-        'status' => $request->status,
+        'employee_id' => $request->employee_id,
+        'join_date' => $request->join_date,
+        'status' => 'active',
       ]);
 
-      // Assign roles
-      if ($request->has('roles') && is_array($request->roles)) {
-        $roles = Role::whereIn('id', $request->roles)->get();
-        $user->syncRoles($roles);
-      }
+      // TODO: Send welcome email with password reset link
 
-      DB::commit();
-
-      return redirect()->route('admin.employees.index')
-        ->with('success', 'Employee created successfully.');
-    } catch (\Exception $e) {
-      DB::rollBack();
-
-      return redirect()->back()
-        ->with('error', 'Failed to create employee: ' . $e->getMessage())
-        ->withInput();
-    }
+      return $employee;
+    });
   }
 
-  /**
-   * Display the specified employee.
-   *
-   * @param User $employee
-   * @return \Inertia\Response
-   */
-  public function show(User $employee)
-  {
-    $employee->load(['employeeProfile.department', 'roles']);
-
-    // Get attendance statistics
-    $attendanceService = app(AttendanceService::class);
-    $attendanceStats = $attendanceService->getAttendanceStats($employee, 'monthly');
-    $attendanceTrends = $attendanceService->getAttendanceTrends($employee, 6);
-
-    // Get salary history
-    $salaryService = app(SalaryCalculationService::class);
-    $salaryHistory = $salaryService->getEmployeeSalaryHistory($employee->id, 6);
-
-    return Inertia::render('Admin/Employees/Show', [
-      'employee' => $employee,
-      'attendanceStats' => $attendanceStats,
-      'attendanceTrends' => $attendanceTrends,
-      'salaryHistory' => $salaryHistory,
-    ]);
-  }
-
-  /**
-   * Show the form for editing the specified employee.
-   *
-   * @param User $employee
-   * @return \Inertia\Response
-   */
-  public function edit(User $employee)
-  {
-    $employee->load(['employeeProfile', 'roles']);
-    $departments = Department::orderBy('name')->get(['id', 'name']);
-    $roles = Role::orderBy('name')->get(['id', 'name']);
-
-    return Inertia::render('Admin/Employees/Edit', [
-      'employee' => $employee,
-      'departments' => $departments,
-      'roles' => $roles,
-      'statuses' => [
-        'active' => 'Active',
-        'on_leave' => 'On Leave',
-        'suspended' => 'Suspended',
-        'terminated' => 'Terminated',
-      ],
-      'employeeRoles' => $employee->roles->pluck('id')->toArray(),
-    ]);
-  }
-
-  /**
-   * Update the specified employee in storage.
-   *
-   * @param Request $request
-   * @param User $employee
-   * @return \Illuminate\Http\RedirectResponse
-   */
-  public function update(Request $request, User $employee)
+  public function update(Request $request, Employee $employee)
   {
     $request->validate([
-      'name' => 'required|string|max:255',
-      'email' => 'required|string|email|max:255|unique:users,email,' . $employee->id,
-      'password' => 'nullable|string|min:8',
-      'department_id' => 'required|exists:departments,id',
-      'position' => 'required|string|max:255',
-      'hire_date' => 'required|date',
-      'base_salary' => 'required|numeric|min:0',
-      'hourly_rate' => 'nullable|numeric|min:0',
-      'status' => 'required|in:active,on_leave,suspended,terminated',
-      'roles' => 'nullable|array',
-      'roles.*' => 'exists:roles,id',
+      'name' => ['required', 'string', 'max:255'],
+      'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $employee->user_id],
+      'department_id' => ['required', 'exists:departments,id'],
+      'position' => ['required', 'string', 'max:255'],
+      'status' => ['required', 'in:active,inactive,on_leave'],
+      'phone' => ['nullable', 'string', 'max:255'],
+      'address' => ['nullable', 'string', 'max:255'],
+      'emergency_contact' => ['nullable', 'array'],
+      'emergency_contact.name' => ['required_with:emergency_contact', 'string', 'max:255'],
+      'emergency_contact.relationship' => ['required_with:emergency_contact', 'string', 'max:255'],
+      'emergency_contact.phone' => ['required_with:emergency_contact', 'string', 'max:255'],
     ]);
 
-    DB::beginTransaction();
-
-    try {
-      // Update user
-      $employee->update([
+    return DB::transaction(function () use ($request, $employee) {
+      $employee->user->update([
         'name' => $request->name,
         'email' => $request->email,
       ]);
 
-      // Update password if provided
-      if ($request->filled('password')) {
-        $employee->update([
-          'password' => Hash::make($request->password),
-        ]);
-      }
-
-      // Update employee profile
-      $employee->employeeProfile->update([
+      $employee->update([
         'department_id' => $request->department_id,
         'position' => $request->position,
-        'hire_date' => $request->hire_date,
-        'base_salary' => $request->base_salary,
-        'hourly_rate' => $request->hourly_rate,
         'status' => $request->status,
+        'phone' => $request->phone,
+        'address' => $request->address,
+        'emergency_contact' => $request->emergency_contact,
       ]);
 
-      // Update roles
-      if ($request->has('roles')) {
-        $roles = Role::whereIn('id', $request->roles)->get();
-        $employee->syncRoles($roles);
-      }
-
-      DB::commit();
-
-      return redirect()->route('admin.employees.index')
-        ->with('success', 'Employee updated successfully.');
-    } catch (\Exception $e) {
-      DB::rollBack();
-
-      return redirect()->back()
-        ->with('error', 'Failed to update employee: ' . $e->getMessage())
-        ->withInput();
-    }
+      return $employee;
+    });
   }
 
-  /**
-   * Remove the specified employee from storage.
-   *
-   * @param User $employee
-   * @return \Illuminate\Http\RedirectResponse
-   */
-  public function destroy(User $employee)
+  public function destroy(Employee $employee)
   {
-    try {
-      // Check if employee has attendance logs or salary records
-      $hasAttendanceLogs = $employee->attendanceLogs()->exists();
-      $hasSalaryRecords = $employee->salaryRecords()->exists();
+    $employee->update(['status' => 'inactive']);
 
-      if ($hasAttendanceLogs || $hasSalaryRecords) {
-        return redirect()->back()
-          ->with('error', 'Cannot delete employee with attendance logs or salary records.');
-      }
-
-      DB::beginTransaction();
-
-      // Delete employee profile
-      $employee->employeeProfile()->delete();
-
-      // Delete user
-      $employee->delete();
-
-      DB::commit();
-
-      return redirect()->route('admin.employees.index')
-        ->with('success', 'Employee deleted successfully.');
-    } catch (\Exception $e) {
-      DB::rollBack();
-
-      return redirect()->back()
-        ->with('error', 'Failed to delete employee: ' . $e->getMessage());
-    }
-  }
-
-  /**
-   * View employee attendance.
-   *
-   * @param User $employee
-   * @param Request $request
-   * @return \Inertia\Response
-   */
-  public function attendance(User $employee, Request $request)
-  {
-    // Get month and year from request or use current
-    $month = $request->input('month', now()->month);
-    $year = $request->input('year', now()->year);
-
-    // Create date objects
-    $startDate = \Carbon\Carbon::createFromDate($year, $month, 1)->startOfMonth();
-    $endDate = \Carbon\Carbon::createFromDate($year, $month, 1)->endOfMonth();
-
-    // Get attendance service
-    $attendanceService = app(AttendanceService::class);
-
-    // Get stats for the selected month
-    $stats = \App\Models\AttendanceLog::getSummary($employee->id, $startDate, $endDate);
-
-    // Get daily breakdown for the month
-    $dailyLogs = [];
-    $current = $startDate->copy();
-
-    while ($current->lte($endDate)) {
-      $dayStart = $current->copy()->startOfDay();
-      $dayEnd = $current->copy()->endOfDay();
-
-      $log = \App\Models\AttendanceLog::where('user_id', $employee->id)
-        ->whereBetween('check_in_time', [$dayStart, $dayEnd])
-        ->first();
-
-      $dailyLogs[] = [
-        'date' => $current->format('Y-m-d'),
-        'day' => $current->format('d'),
-        'weekday' => $current->format('D'),
-        'is_weekend' => $current->isWeekend(),
-        'is_today' => $current->isToday(),
-        'attendance' => $log ? [
-          'check_in' => $log->check_in_time?->format('H:i'),
-          'check_out' => $log->check_out_time?->format('H:i'),
-          'status' => $log->status,
-          'late_minutes' => $log->late_minutes,
-          'early_departure_minutes' => $log->early_departure_minutes,
-          'notes' => $log->notes,
-        ] : null,
-      ];
-
-      $current->addDay();
-    }
-
-    // Get attendance trends
-    $trends = $attendanceService->getAttendanceTrends($employee, 6);
-
-    return Inertia::render('Admin/Employees/Attendance', [
-      'employee' => $employee->load('employeeProfile.department'),
-      'stats' => $stats,
-      'dailyLogs' => $dailyLogs,
-      'trends' => $trends,
-      'currentMonth' => [
-        'month' => (int) $month,
-        'year' => (int) $year,
-        'name' => $startDate->format('F Y'),
-      ],
-    ]);
-  }
-
-  /**
-   * View employee salary.
-   *
-   * @param User $employee
-   * @return \Inertia\Response
-   */
-  public function salary(User $employee)
-  {
-    // Get salary calculation service
-    $salaryService = app(SalaryCalculationService::class);
-
-    // Get salary history
-    $salaryHistory = $salaryService->getEmployeeSalaryHistory($employee->id, 12);
-
-    // Calculate current month's salary
-    $currentSalary = $salaryService->calculateEmployeeSalary(
-      $employee->id,
-      now()->month,
-      now()->year
-    );
-
-    return Inertia::render('Admin/Employees/Salary', [
-      'employee' => $employee->load('employeeProfile.department'),
-      'salaryHistory' => $salaryHistory,
-      'currentSalary' => $currentSalary,
-      'currentMonth' => now()->format('F Y'),
-    ]);
+    return redirect()->route('admin.employees.index');
   }
 }
