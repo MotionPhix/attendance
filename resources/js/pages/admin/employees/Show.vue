@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { Head, router, Link } from '@inertiajs/vue3'
-import AppLayout from '@/layouts/MainAppLayout.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -34,7 +33,11 @@ import {
 } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
+import { useStorage } from '@vueuse/core';
 import { toast } from 'vue-sonner';
+import { BreadcrumbItem } from '@/types';
+import MainAppLayout from '@/layouts/MainAppLayout.vue';
+import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 
 dayjs.extend(LocalizedFormat)
 
@@ -122,6 +125,7 @@ const props = defineProps<Props>()
 const showEditDialog = ref(false)
 const showDeactivateDialog = ref(false)
 const processing = ref(false)
+const activeTab = useStorage('employee_tabs', 'overview', sessionStorage)
 
 // Format helpers
 const formatCurrency = (amount: number) => {
@@ -243,43 +247,37 @@ const loadSalaryPage = (page: number) => {
     { preserveState: true }
   )
 }
+
+const { setPageBreadcrumbs } = useBreadcrumbs();
+
+setPageBreadcrumbs([
+  {
+    label: 'Dashboard',
+    href: route('admin.dashboard')
+  },
+  {
+    label: 'Employees',
+    href: route('admin.employees.index')
+  },
+  {
+    label: props.employee.user.name
+  }
+]);
+
+onMounted(() => {
+  activeTab.value = 'overview'
+})
+
+onBeforeUnmount(() => {
+  activeTab.value = null
+})
 </script>
 
 <template>
-  <AppLayout>
+  <MainAppLayout>
     <Head :title="employee.user.name" />
 
     <div class="container py-6">
-      <!-- Header with back button -->
-      <div class="mb-6 flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <Button
-            :as="Link"
-            variant="outline"
-            :href="route('admin.employees.index')">
-            <ArrowLeft class="mr-2 h-4 w-4" />
-            Back to Employees
-          </Button>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <Button
-            variant="outline"
-            @click="showEditDialog = true">
-            <Edit2 class="mr-2 h-4 w-4" />
-            Edit Details
-          </Button>
-
-          <Button
-            v-if="employee.status !== 'terminated'"
-            variant="destructive"
-            @click="showDeactivateDialog = true">
-            <UserX class="mr-2 h-4 w-4" />
-            Terminate
-          </Button>
-        </div>
-      </div>
-
       <!-- Employee header -->
       <div class="mb-6 flex items-center gap-4">
         <img
@@ -297,9 +295,28 @@ const loadSalaryPage = (page: number) => {
           </p>
         </div>
 
+        <div class="mb-6 flex-1 flex items-center justify-end">
+          <div class="flex items-center gap-2">
+            <Button
+              variant="outline"
+              @click="showEditDialog = true">
+              <Edit2 class="mr-2 h-4 w-4" />
+              Edit Details
+            </Button>
+
+            <Button
+              v-if="employee.status !== 'terminated'"
+              variant="destructive"
+              @click="showDeactivateDialog = true">
+              <UserX class="mr-2 h-4 w-4" />
+              Terminate
+            </Button>
+          </div>
+        </div>
+
       </div>
 
-      <Tabs class="space-y-6" default-value="overview">
+      <Tabs class="space-y-6" v-model="activeTab">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
@@ -314,40 +331,47 @@ const loadSalaryPage = (page: number) => {
               <CardHeader>
                 <CardTitle>Basic Information</CardTitle>
               </CardHeader>
+
               <CardContent>
-                <dl class="space-y-4">
-                  <div class="flex justify-between">
+                <dl class="grid gap-y-4 divide-y">
+                  <div class="grid gap-y-2">
                     <dt class="font-medium text-muted-foreground">Status</dt>
+
                     <dd>
                       <span
                         class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium"
-                        :class="getStatusColor(employee.status)"
-                      >
+                        :class="getStatusColor(employee.status)">
                         {{ employee.status.replace('_', ' ') }}
                       </span>
                     </dd>
                   </div>
-                  <div class="flex justify-between">
+
+                  <div class="grid gap-y-2 pt-2">
                     <dt class="font-medium text-muted-foreground">Department</dt>
                     <dd>{{ employee.department.name }}</dd>
                   </div>
-                  <div class="flex justify-between">
+
+                  <div class="grid gap-y-2 pt-2">
                     <dt class="font-medium text-muted-foreground">Position</dt>
                     <dd>{{ employee.position }}</dd>
                   </div>
-                  <div class="flex justify-between">
+
+                  <div class="grid gap-y-2 pt-2">
                     <dt class="font-medium text-muted-foreground">Hire Date</dt>
                     <dd>{{ formatDate(employee.hire_date) }}</dd>
                   </div>
-                  <div class="flex justify-between">
+
+                  <div class="grid gap-y-2 pt-2">
                     <dt class="font-medium text-muted-foreground">Email</dt>
                     <dd>{{ employee.user.email }}</dd>
                   </div>
-                  <div class="flex justify-between">
+
+                  <div class="grid gap-y-2 pt-2">
                     <dt class="font-medium text-muted-foreground">Base Salary</dt>
                     <dd>{{ formatCurrency(employee.base_salary) }}</dd>
                   </div>
-                  <div class="flex justify-between">
+
+                  <div class="flex justify-between pt-2">
                     <dt class="font-medium text-muted-foreground">Hourly Rate</dt>
                     <dd>{{ employee.hourly_rate ? formatCurrency(employee.hourly_rate) : '—' }}</dd>
                   </div>
@@ -752,5 +776,5 @@ const loadSalaryPage = (page: number) => {
         </DialogContent>
       </Dialog>
     </div>
-  </AppLayout>
+  </MainAppLayout>
 </template>

@@ -24,6 +24,7 @@ import { Plus, Search, UserPlus, XCircle } from 'lucide-vue-next'
 import { debounce } from 'lodash'
 import { toast } from 'vue-sonner';
 import EmptyState from '@/components/EmptyState.vue';
+import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 
 interface Department {
   id: number
@@ -163,6 +164,13 @@ const clearFilters = () => {
   selectedStatus.value = ''
   updateFilters()
 }
+
+const { setPageBreadcrumbs } = useBreadcrumbs();
+
+setPageBreadcrumbs([
+  { label: 'Home', href: route('admin.dashboard') },
+  { label: 'Employees', href: route('admin.employees.index') },
+]);
 </script>
 
 <template>

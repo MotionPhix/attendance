@@ -7,15 +7,10 @@ import EmployeeLayout from '@/layouts/app/EmployeeLayout.vue';
 const page = usePage();
 
 const user = computed(() => page.props.auth.user);
-
-const isAdmin = computed(() => {
-  if (!user.value || !user.value.roles) return false;
-  return user.value.roles.some(role => ['admin', 'hr', 'manager'].includes(role));
-});
 </script>
 
 <template>
-  <AdminLayout v-if="isAdmin">
+  <AdminLayout v-if="user.isAdmin">
     <slot />
   </AdminLayout>
 

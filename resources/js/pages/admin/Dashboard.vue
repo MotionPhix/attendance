@@ -9,6 +9,7 @@ import { useAppearance } from '@/composables/useAppearance';
 
 // Set breadcrumbs for this page
 const { setPageBreadcrumbs } = useBreadcrumbs();
+
 setPageBreadcrumbs([
   { label: 'Home', href: '/' },
   { label: 'Dashboard' }
