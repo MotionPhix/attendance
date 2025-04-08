@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select'
 import { Building2, Clock, DollarSign, UserRound, Plus, Trash2 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner';
+import SettingsNav from '@/pages/admin/settings/partials/SettingsNav.vue';
 
 interface TaxBracket {
   from: number
@@ -166,40 +167,7 @@ const handleSubmit = () => {
       </div>
 
       <!-- Settings Navigation -->
-      <div class="mb-6 flex flex-wrap gap-4">
-        <Button
-          variant="outline"
-          :href="route('admin.settings.index')"
-        >
-          <Building2 class="mr-2 h-4 w-4" />
-          General
-        </Button>
-
-        <Button
-          variant="outline"
-          :href="route('admin.settings.attendance')"
-        >
-          <Clock class="mr-2 h-4 w-4" />
-          Attendance
-        </Button>
-
-        <Button
-          variant="outline"
-          :href="route('admin.settings.leave')"
-        >
-          <UserRound class="mr-2 h-4 w-4" />
-          Leave
-        </Button>
-
-        <Button
-          variant="outline"
-          :class="{ 'bg-muted': true }"
-          :href="route('admin.settings.salary')"
-        >
-          <DollarSign class="mr-2 h-4 w-4" />
-          Salary
-        </Button>
-      </div>
+      <SettingsNav current-path="admin.settings.salary" />
 
       <!-- Settings Form -->
       <form @submit.prevent="handleSubmit">

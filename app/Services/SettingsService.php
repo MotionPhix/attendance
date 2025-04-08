@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -18,6 +19,19 @@ class SettingsService
   public function get(string $key, mixed $default = null): mixed
   {
     return setting($key, $default);
+  }
+
+  /**
+   * Set a setting value
+   *
+   * @param array<string, mixed> $settings
+   * @return void
+   */
+  public function set(array $settings): void
+  {
+    foreach ($settings as $key => $value) {
+      Setting::setValueByKey($key, $value);
+    }
   }
 
   public function updateGeneralSettings(array $data, ?UploadedFile $logo = null): void
@@ -72,6 +86,6 @@ class SettingsService
   private function saveAndClearCache(): void
   {
     setting()->save();
-    Cache::tags(['settings'])->flush();
+    Cache::flush();
   }
 }

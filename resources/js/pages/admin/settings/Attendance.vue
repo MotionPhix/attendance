@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Building2, Clock, DollarSign, UserRound } from 'lucide-vue-next'
 import { toast } from 'vue-sonner';
+import SettingsNav from '@/pages/admin/settings/partials/SettingsNav.vue';
+import { XIcon } from 'lucide-vue-next';
 
 interface Settings {
   check_in_tolerance_minutes: number
@@ -93,40 +94,7 @@ const handleSubmit = () => {
       </div>
 
       <!-- Settings Navigation -->
-      <div class="mb-6 flex flex-wrap gap-4">
-        <Button
-          variant="outline"
-          :href="route('admin.settings.index')"
-        >
-          <Building2 class="mr-2 h-4 w-4" />
-          General
-        </Button>
-
-        <Button
-          variant="outline"
-          :class="{ 'bg-muted': true }"
-          :href="route('admin.settings.attendance')"
-        >
-          <Clock class="mr-2 h-4 w-4" />
-          Attendance
-        </Button>
-
-        <Button
-          variant="outline"
-          :href="route('admin.settings.leave')"
-        >
-          <UserRound class="mr-2 h-4 w-4" />
-          Leave
-        </Button>
-
-        <Button
-          variant="outline"
-          :href="route('admin.settings.salary')"
-        >
-          <DollarSign class="mr-2 h-4 w-4" />
-          Salary
-        </Button>
-      </div>
+      <SettingsNav current-path="admin.settings.attendance" />
 
       <!-- Settings Form -->
       <form @submit.prevent="handleSubmit">
@@ -249,6 +217,7 @@ const handleSubmit = () => {
                 Configure IP-based attendance restrictions.
               </CardDescription>
             </CardHeader>
+
             <CardContent class="space-y-6">
               <div class="grid gap-2">
                 <Label class="flex items-center gap-2">
@@ -300,8 +269,7 @@ const handleSubmit = () => {
         <div class="mt-6 flex justify-end">
           <Button
             type="submit"
-            :disabled="processing"
-          >
+            :disabled="processing">
             Save Changes
           </Button>
         </div>
