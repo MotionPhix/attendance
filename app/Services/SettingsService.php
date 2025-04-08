@@ -8,6 +8,18 @@ use Illuminate\Support\Facades\Storage;
 
 class SettingsService
 {
+  /**
+   * Get a setting value by key
+   *
+   * @param string $key
+   * @param mixed $default
+   * @return mixed
+   */
+  public function get(string $key, mixed $default = null): mixed
+  {
+    return setting($key, $default);
+  }
+
   public function updateGeneralSettings(array $data, ?UploadedFile $logo = null): void
   {
     foreach ($data as $key => $value) {

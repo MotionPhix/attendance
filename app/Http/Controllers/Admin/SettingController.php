@@ -19,16 +19,16 @@ class SettingController extends Controller
 
   public function index()
   {
-    return Inertia::render('admin/settings/Index', [
-      'settings' => Cache::tags(['settings'])->remember('general_settings', now()->addHour(), fn() => [
+    return Inertia::render('admin/settings/General', [
+      'settings' => fn() => ([
         'company_name' => config('app.name'),
         'company_email' => config('mail.from.address'),
-        'company_phone' => setting('company_phone', ''),
-        'company_address' => setting('company_address', ''),
-        'company_logo' => setting('company_logo', ''),
+        'company_phone' => $this->settingsService->get('company_phone', ''),
+        'company_address' => $this->settingsService->get('company_address', ''),
+        'company_logo' => $this->settingsService->get('company_logo', ''),
+        'date_format' => $this->settingsService->get('date_format', 'Y-m-d'),
+        'time_format' => $this->settingsService->get('time_format', 'H:i'),
         'timezone' => config('app.timezone'),
-        'date_format' => setting('date_format', 'Y-m-d'),
-        'time_format' => setting('time_format', 'H:i'),
       ])
     ]);
   }
@@ -93,7 +93,7 @@ class SettingController extends Controller
   public function salarySettings()
   {
     return Inertia::render('admin/settings/Salary', [
-      'settings' => Cache::tags(['settings'])->remember('salary_settings', now()->addHour(), fn() => [
+      'settings' => fn() => ([
         'salary_payment_date' => setting('salary_payment_date', 1),
         'overtime_rate' => setting('overtime_rate', 1.5),
         'weekend_overtime_rate' => setting('weekend_overtime_rate', 2.0),
