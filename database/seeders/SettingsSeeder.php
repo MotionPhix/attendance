@@ -12,7 +12,7 @@ class SettingsSeeder extends Seeder
    */
   public function run(): void
   {
-    $settings = [
+    /*$settings = [
       // Company settings
       'company_phone' => '',
       'company_address' => '',
@@ -68,6 +68,157 @@ class SettingsSeeder extends Seeder
         ['key' => $key],
         ['value' => $value]
       );
+    }*/
+
+    $settings = [
+      // General Settings
+      [
+        'key' => 'app_name',
+        'value' => 'Attendance System',
+        'group' => 'general',
+        'type' => 'text',
+        'description' => 'The name of your application',
+        'is_public' => true,
+      ],
+      [
+        'key' => 'company_name',
+        'value' => 'Your Company',
+        'group' => 'general',
+        'type' => 'text',
+        'description' => 'Your company name',
+        'is_public' => true,
+      ],
+
+      // Regional Settings
+      [
+        'key' => 'timezone',
+        'value' => 'UTC',
+        'group' => 'regional',
+        'type' => 'select',
+        'description' => 'Default timezone for the application',
+        'options' => array_combine(timezone_identifiers_list(), timezone_identifiers_list()),
+        'is_public' => false,
+      ],
+      [
+        'key' => 'date_format',
+        'value' => 'Y-m-d',
+        'group' => 'regional',
+        'type' => 'select',
+        'description' => 'Default date format',
+        'options' => [
+          'Y-m-d' => '2025-04-08',
+          'm/d/Y' => '04/08/2025',
+          'd/m/Y' => '08/04/2025',
+          'M j, Y' => 'Apr 8, 2025',
+        ],
+        'is_public' => true,
+      ],
+      [
+        'key' => 'time_format',
+        'value' => 'H:i',
+        'group' => 'regional',
+        'type' => 'select',
+        'description' => 'Default time format',
+        'options' => [
+          'H:i' => '14:30',
+          'h:i A' => '02:30 PM',
+        ],
+        'is_public' => true,
+      ],
+
+      // Currency Settings
+      [
+        'key' => 'currency',
+        'value' => 'USD',
+        'group' => 'currency',
+        'type' => 'select',
+        'description' => 'Default currency for the application',
+        'options' => [
+          'USD' => 'US Dollar ($)',
+          'EUR' => 'Euro (€)',
+          'GBP' => 'British Pound (£)',
+          // Add more currencies as needed
+        ],
+        'is_public' => true,
+      ],
+      [
+        'key' => 'currency_position',
+        'value' => 'before',
+        'group' => 'currency',
+        'type' => 'select',
+        'description' => 'Position of the currency symbol',
+        'options' => [
+          'before' => 'Before amount ($100)',
+          'after' => 'After amount (100$)',
+        ],
+        'is_public' => false,
+      ],
+
+      // Attendance Settings
+      [
+        'key' => 'work_start_time',
+        'value' => '09:00',
+        'group' => 'attendance',
+        'type' => 'text',
+        'description' => 'Default work start time',
+        'is_public' => true,
+      ],
+      [
+        'key' => 'work_end_time',
+        'value' => '17:00',
+        'group' => 'attendance',
+        'type' => 'text',
+        'description' => 'Default work end time',
+        'is_public' => true,
+      ],
+      [
+        'key' => 'late_threshold_minutes',
+        'value' => '15',
+        'group' => 'attendance',
+        'type' => 'number',
+        'description' => 'Minutes after work start time to mark as late',
+        'is_public' => true,
+      ],
+
+      // Leave Settings
+      [
+        'key' => 'annual_leave_days',
+        'value' => '20',
+        'group' => 'leave',
+        'type' => 'number',
+        'description' => 'Default annual leave days',
+        'is_public' => true,
+      ],
+      [
+        'key' => 'sick_leave_days',
+        'value' => '10',
+        'group' => 'leave',
+        'type' => 'number',
+        'description' => 'Default sick leave days',
+        'is_public' => true,
+      ],
+
+      // Email Settings
+      [
+        'key' => 'email_notifications',
+        'value' => 'true',
+        'group' => 'notifications',
+        'type' => 'boolean',
+        'description' => 'Enable email notifications',
+        'is_public' => false,
+      ],
+      [
+        'key' => 'notification_email',
+        'value' => 'admin@example.com',
+        'group' => 'notifications',
+        'type' => 'text',
+        'description' => 'Email address for notifications',
+        'is_public' => false,
+      ],
+    ];
+
+    foreach ($settings as $setting) {
+      Setting::updateOrCreate(['key' => $setting['key']], $setting);
     }
   }
 }

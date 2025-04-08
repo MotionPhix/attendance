@@ -2,138 +2,64 @@
 
 namespace App\Services;
 
-use App\Models\Setting;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class SettingsService
 {
-  /**
-   * The settings cache key.
-   *
-   * @var string
-   */
-  protected $cacheKey = 'app_settings';
-
-  /**
-   * The settings cache expiration time in seconds.
-   *
-   * @var int
-   */
-  protected $cacheExpiration = 86400; // 24 hours
-
-  /**
-   * The settings collection.
-   *
-   * @var array<string, mixed>
-   */
-  protected $settings = [];
-
-  /**
-   * Create a new settings service instance.
-   *
-   * @return void
-   */
-  public function __construct()
+  public function updateGeneralSettings(array $data, ?UploadedFile $logo = null): void
   {
-    $this->loadSettings();
-  }
-
-  /**
-   * Load all settings from cache or database.
-   *
-   * @return void
-   */
-  protected function loadSettings(): void
-  {
-    $this->settings = Cache::remember($this->cacheKey, $this->cacheExpiration, function () {
-      return Setting::all()->pluck('value', 'key')->toArray();
-    });
-  }
-
-  /**
-   * Get a setting value.
-   *
-   * @param string $key
-   * @param mixed $default
-   * @return mixed
-   */
-  public function get(string $key, $default = null)
-  {
-    return $this->settings[$key] ?? $default;
-  }
-
-  /**
-   * Set a setting value.
-   *
-   * @param string|array<string, mixed> $key
-   * @param mixed $value
-   * @return $this
-   */
-  public function set($key, $value = null)
-  {
-    if (is_array($key)) {
-      foreach ($key as $k => $v) {
-        $this->settings[$k] = $v;
+    foreach ($data as $key => $value) {
+      if ($key !== 'company_logo') {
+        setting([$key => $value]);
       }
-    } else {
-      $this->settings[$key] = $value;
     }
 
-    return $this;
-  }
+    if ($logo) {
+      $path = $logo->store('public/logos');
+      setting(['company_logo' => $path]);
 
-  /**
-   * Check if a setting exists.
-   *
-   * @param string $key
-   * @return bool
-   */
-  public function has(string $key): bool
-  {
-    return array_key_exists($key, $this->settings);
-  }
-
-  /**
-   * Remove a setting.
-   *
-   * @param string $key
-   * @return $this
-   */
-  public function forget(string $key)
-  {
-    unset($this->settings[$key]);
-
-    return $this;
-  }
-
-  /**
-   * Get all settings.
-   *
-   * @return array<string, mixed>
-   */
-  public function all(): array
-  {
-    return $this->settings;
-  }
-
-  /**
-   * Save settings to the database.
-   *
-   * @return void
-   */
-  public function save(): void
-  {
-    foreach ($this->settings as $key => $value) {
-      Setting::updateOrCreate(
-        ['key' => $key],
-        ['value' => $value]
-      );
+      // Delete old logo if exists
+      $oldLogo = setting('company_logo');
+      if ($oldLogo && Storage::exists($oldLogo)) {
+        Storage::delete($oldLogo);
+      }
     }
 
-    // Clear the cache
-    Cache::forget($this->cacheKey);
+    $this->saveAndClearCache();
+  }
 
-    // Reload settings
-    $this->loadSettings();
+  public function updateAttendanceSettings(array $data): void
+  {
+    foreach ($data as $key => $value) {
+      setting([$key => $value]);
+    }
+
+    $this->saveAndClearCache();
+  }
+
+  public function updateLeaveSettings(array $data): void
+  {
+    foreach ($data as $key => $value) {
+      setting([$key => $value]);
+    }
+
+    $this->saveAndClearCache();
+  }
+
+  public function updateSalarySettings(array $data): void
+  {
+    foreach ($data as $key => $value) {
+      setting([$key => $value]);
+    }
+
+    $this->saveAndClearCache();
+  }
+
+  private function saveAndClearCache(): void
+  {
+    setting()->save();
+    Cache::tags(['settings'])->flush();
   }
 }

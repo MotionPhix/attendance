@@ -12,7 +12,7 @@ interface Props {
 
 withDefaults(defineProps<Props>(), {
   breadcrumbs: () => [{
-    title: 'Dashboard',
+    label: 'Dashboard',
     href: route('dashboard')
   }]
 })
