@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { toast } from 'vue-sonner';
 import SettingsNav from '@/pages/admin/settings/partials/SettingsNav.vue';
 import { XIcon } from 'lucide-vue-next';
+import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 
 interface Settings {
   check_in_tolerance_minutes: number
@@ -36,6 +37,10 @@ const breadcrumbs = [
   { label: 'Settings', href: route('admin.settings.index') },
   { label: 'Attendance' }
 ]
+
+const { setPageBreadcrumbs } = useBreadcrumbs();
+
+setPageBreadcrumbs(breadcrumbs);
 
 // Form state
 const form = ref({
@@ -98,9 +103,9 @@ const handleSubmit = () => {
 
       <!-- Settings Form -->
       <form @submit.prevent="handleSubmit">
-        <div class="grid gap-6">
+        <div class="grid gap-6 grid-cols-3">
           <!-- Basic Attendance Settings -->
-          <Card>
+          <Card class="col-span-2">
             <CardHeader>
               <CardTitle>Basic Settings</CardTitle>
               <CardDescription>
@@ -157,7 +162,7 @@ const handleSubmit = () => {
           </Card>
 
           <!-- Location Restrictions -->
-          <Card>
+          <Card class="col-span-2">
             <CardHeader>
               <CardTitle>Location Restrictions</CardTitle>
               <CardDescription>
@@ -210,7 +215,7 @@ const handleSubmit = () => {
           </Card>
 
           <!-- IP Restrictions -->
-          <Card>
+          <Card class="col-span-2">
             <CardHeader>
               <CardTitle>IP Restrictions</CardTitle>
               <CardDescription>
@@ -266,12 +271,14 @@ const handleSubmit = () => {
         </div>
 
         <!-- Form Actions -->
-        <div class="mt-6 flex justify-end">
-          <Button
-            type="submit"
-            :disabled="processing">
-            Save Changes
-          </Button>
+        <div class="mt-6 grid gap-6 grid-cols-3">
+          <div class="col-span-2 flex justify-end">
+            <Button
+              type="submit"
+              :disabled="processing">
+              Save Changes
+            </Button>
+          </div>
         </div>
       </form>
     </div>

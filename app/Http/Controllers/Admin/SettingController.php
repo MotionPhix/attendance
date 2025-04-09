@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\UpdateAttendanceSettingsRequest;
 use App\Http\Requests\Admin\UpdateGeneralSettingsRequest;
 use App\Http\Requests\Admin\UpdateLeaveSettingsRequest;
 use App\Http\Requests\Admin\UpdateSalarySettingsRequest;
+use App\Models\Setting;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
@@ -94,7 +95,7 @@ class SettingController extends Controller
 
   public function salarySettings()
   {
-    return Inertia::render('admin/settings/Salary', [
+    /*return Inertia::render('admin/settings/Salary', [
       'settings' => Cache::remember('leave_settings', now()->addHour(), fn() => [
         'salary_payment_date' => setting('salary_payment_date', 1),
         'overtime_rate' => setting('overtime_rate', 1.5),
@@ -114,6 +115,31 @@ class SettingController extends Controller
         'enable_bonuses' => setting('enable_bonuses', true),
         'enable_deductions' => setting('enable_deductions', true),
       ])
+    ]);*/
+
+    $taxBrackets = Setting::where('key', 'tax_brackets')->first();
+    $defaultTaxBrackets = [
+      ['from' => 0, 'to' => 1000, 'rate' => 10],
+      ['from' => 1001, 'to' => 3000, 'rate' => 15],
+      ['from' => 3001, 'to' => null, 'rate' => 20],
+    ];
+
+    return Inertia::render('admin/settings/Salary', [
+      'settings' => [
+        'salary_payment_date' => (int) Setting::where('key', 'salary_payment_date')->first()?->value ?? 1,
+        'overtime_rate' => (float) Setting::where('key', 'overtime_rate')->first()?->value ?? 1.5,
+        'weekend_overtime_rate' => (float) Setting::where('key', 'weekend_overtime_rate')->first()?->value ?? 2.0,
+        'holiday_overtime_rate' => (float) Setting::where('key', 'holiday_overtime_rate')->first()?->value ?? 2.5,
+        'late_deduction_method' => Setting::where('key', 'late_deduction_method')->first()?->value ?? 'per_minute',
+        'late_deduction_amount' => (float) Setting::where('key', 'late_deduction_amount')->first()?->value ?? 0,
+        'early_departure_deduction_method' => Setting::where('key', 'early_departure_deduction_method')->first()?->value ?? 'per_minute',
+        'early_departure_deduction_amount' => (float) Setting::where('key', 'early_departure_deduction_amount')->first()?->value ?? 0,
+        'tax_calculation_method' => Setting::where('key', 'tax_calculation_method')->first()?->value ?? 'progressive',
+        'tax_brackets' => $taxBrackets ? json_decode($taxBrackets->value, true) ?? $defaultTaxBrackets : $defaultTaxBrackets,
+        'flat_tax_rate' => (float) Setting::where('key', 'flat_tax_rate')->first()?->value ?? 15,
+        'enable_bonuses' => filter_var(Setting::where('key', 'enable_bonuses')->first()?->value ?? 'true', FILTER_VALIDATE_BOOLEAN),
+        'enable_deductions' => filter_var(Setting::where('key', 'enable_deductions')->first()?->value ?? 'true', FILTER_VALIDATE_BOOLEAN),
+      ]
     ]);
   }
 

@@ -17,6 +17,7 @@ import {
 import { Building2, Clock, DollarSign, UserRound } from 'lucide-vue-next'
 import { toast } from 'vue-sonner';
 import SettingsNav from '@/pages/admin/settings/partials/SettingsNav.vue';
+import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 
 interface Settings {
   annual_leave_days: number
@@ -42,6 +43,10 @@ const breadcrumbs = [
   { label: 'Settings', href: route('admin.settings.index') },
   { label: 'Leave' }
 ]
+
+const { setPageBreadcrumbs } = useBreadcrumbs();
+
+setPageBreadcrumbs(breadcrumbs);
 
 // Form state
 const form = ref({
@@ -99,9 +104,9 @@ const handleSubmit = () => {
 
       <!-- Settings Form -->
       <form @submit.prevent="handleSubmit">
-        <div class="grid gap-6">
+        <div class="grid gap-6 grid-cols-3">
           <!-- Leave Allowances -->
-          <Card>
+          <Card class="col-span-2">
             <CardHeader>
               <CardTitle>Leave Allowances</CardTitle>
               <CardDescription>
@@ -157,7 +162,7 @@ const handleSubmit = () => {
           </Card>
 
           <!-- Leave Policies -->
-          <Card>
+          <Card class="col-span-2">
             <CardHeader>
               <CardTitle>Leave Policies</CardTitle>
               <CardDescription>
@@ -227,7 +232,7 @@ const handleSubmit = () => {
           </Card>
 
           <!-- Leave Carryover -->
-          <Card>
+          <Card class="col-span-2">
             <CardHeader>
               <CardTitle>Leave Carryover</CardTitle>
               <CardDescription>
@@ -269,13 +274,14 @@ const handleSubmit = () => {
         </div>
 
         <!-- Form Actions -->
-        <div class="mt-6 flex justify-end">
-          <Button
-            type="submit"
-            :disabled="processing"
-          >
-            Save Changes
-          </Button>
+        <div class="mt-6 grid gap-6 grid-cols-3">
+          <div class="col-span-2 justify-end flex">
+            <Button
+              type="submit"
+              :disabled="processing">
+              Save Changes
+            </Button>
+          </div>
         </div>
       </form>
     </div>

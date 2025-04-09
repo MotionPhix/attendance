@@ -1,53 +1,58 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/MainAppLayout.vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import AppLayout from '@/layouts/MainAppLayout.vue';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Building2, Clock, DollarSign, UserRound } from 'lucide-vue-next'
+  SelectValue
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Building2, Clock, DollarSign, UserRound } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import SettingsNav from '@/pages/admin/settings/partials/SettingsNav.vue';
+import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 
 interface Settings {
-  company_name: string
-  company_email: string
-  company_phone: string
-  company_address: string
-  company_logo: string
-  timezone: string
-  date_format: string
-  time_format: string
+  company_name: string;
+  company_email: string;
+  company_phone: string;
+  company_address: string;
+  company_logo: string;
+  timezone: string;
+  date_format: string;
+  time_format: string;
 }
 
 interface Props {
-  settings: Settings
+  settings: Settings;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
 // Breadcrumbs
 const breadcrumbs = [
   { label: 'Dashboard', href: route('admin.dashboard') },
   { label: 'Settings' }
-]
+];
+
+const { setPageBreadcrumbs } = useBreadcrumbs();
+
+setPageBreadcrumbs(breadcrumbs);
 
 // Form state
 const form = ref({
   ...props.settings,
   company_logo: null as File | null
-})
+});
 
-const processing = ref(false)
+const processing = ref(false);
 
 // Available formats and timezones
 const dateFormats = {
@@ -55,41 +60,41 @@ const dateFormats = {
   'm/d/Y': '04/08/2025',
   'd/m/Y': '08/04/2025',
   'M j, Y': 'Apr 8, 2025'
-}
+};
 
 const timeFormats = {
   'H:i': '14:30',
   'h:i A': '02:30 PM'
-}
+};
 
 // Get all timezones
 const timezones = Object.fromEntries(
   Intl.supportedValuesOf('timeZone').map(tz => [tz, tz])
-)
+);
 
 // Handle logo preview
-const logoPreview = ref<string>(props.settings.company_logo)
-const logoInput = ref<HTMLInputElement | null>(null)
+const logoPreview = ref<string>(props.settings.company_logo);
+const logoInput = ref<HTMLInputElement | null>(null);
 
 const handleLogoChange = (event: Event) => {
-  const target = event.target as HTMLInputElement
+  const target = event.target as HTMLInputElement;
   if (target.files?.length) {
-    const file = target.files[0]
-    form.value.company_logo = file
-    logoPreview.value = URL.createObjectURL(file)
+    const file = target.files[0];
+    form.value.company_logo = file;
+    logoPreview.value = URL.createObjectURL(file);
   }
-}
+};
 
 // Form submission
 const handleSubmit = () => {
-  processing.value = true
+  processing.value = true;
 
-  const formData = new FormData()
+  const formData = new FormData();
   Object.entries(form.value).forEach(([key, value]) => {
     if (value !== null) {
-      formData.append(key, value)
+      formData.append(key, value);
     }
-  })
+  });
 
   router.post(route('admin.settings.update'), formData, {
     preserveScroll: true,
@@ -97,20 +102,20 @@ const handleSubmit = () => {
       toast({
         title: 'Success',
         description: 'Settings have been updated successfully.'
-      })
+      });
     },
     onError: (errors) => {
       toast({
         title: 'Error',
         description: 'There was an error updating settings. Please check the form and try again.',
         variant: 'destructive'
-      })
+      });
     },
     onFinish: () => {
-      processing.value = false
+      processing.value = false;
     }
-  })
-}
+  });
+};
 </script>
 
 <template>
@@ -130,9 +135,9 @@ const handleSubmit = () => {
 
       <!-- Settings Form -->
       <form @submit.prevent="handleSubmit">
-        <div class="grid gap-6">
+        <div class="grid gap-6 grid-cols-3">
           <!-- Company Information -->
-          <Card>
+          <Card class="col-span-2">
             <CardHeader>
               <CardTitle>Company Information</CardTitle>
               <CardDescription>
@@ -210,7 +215,7 @@ const handleSubmit = () => {
           </Card>
 
           <!-- Regional Settings -->
-          <Card>
+          <Card class="col-span-2">
             <CardHeader>
               <CardTitle>Regional Settings</CardTitle>
               <CardDescription>
@@ -279,13 +284,14 @@ const handleSubmit = () => {
         </div>
 
         <!-- Form Actions -->
-        <div class="mt-6 flex justify-end">
-          <Button
-            type="submit"
-            :disabled="processing"
-          >
-            Save Changes
-          </Button>
+        <div class="mt-6 grid grid-cols-3">
+          <div class="flex grid-cols-2 col-start-2 justify-end">
+            <Button
+              type="submit"
+              :disabled="processing">
+              Save Changes
+            </Button>
+          </div>
         </div>
       </form>
     </div>

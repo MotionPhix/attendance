@@ -24,7 +24,7 @@ const adminNavItems: NavItem[] = [
   },
   {
     title: 'Attendance',
-    href: '/admin/reports/attendance/daily',
+    href: '/admin/attendance',
     icon: Clock,
   },
   {
@@ -101,14 +101,9 @@ const mainNavItems = isAdmin.value ? adminNavItems : employeeNavItems;
 
 const footerNavItems: NavItem[] = [
   {
-    title: 'Github Repo',
-    href: 'https://github.com/laravel/vue-starter-kit',
+    title: 'Reports',
+    href: isAdmin.value ? route('admin.reports.attendance.daily') : route('reports.attendance.daily'),
     icon: Folder,
-  },
-  {
-    title: 'Documentation',
-    href: 'https://laravel.com/docs/starter-kits',
-    icon: BookOpen,
   },
 ];
 </script>

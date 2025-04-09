@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { ClockIcon, ArrowRightOnRectangleIcon } from '@heroicons/vue/24/outline';
+import { ClockIcon, ExternalLink } from 'lucide-vue-next';
 import { useForm } from '@inertiajs/vue3';
-import Modal from '@/components/Modal.vue';
-import InputLabel from '@/components/InputLabel.vue';
-import TextArea from '@/components/TextArea.vue';
-import PrimaryButton from '@/components/PrimaryButton.vue';
-import SecondaryButton from '@/components/SecondaryButton.vue';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -151,8 +148,7 @@ onUnmounted(() => {
         v-if="canCheckIn"
         @click="showCheckInModal = true"
         class="btn-clock-in"
-        :disabled="processing"
-      >
+        :disabled="processing">
         <ClockIcon class="w-5 h-5 mr-2" />
         Clock In
       </button>
@@ -161,9 +157,8 @@ onUnmounted(() => {
         v-if="canCheckOut"
         @click="showCheckOutModal = true"
         class="btn-clock-out"
-        :disabled="processing"
-      >
-        <ArrowRightOnRectangleIcon class="w-5 h-5 mr-2" />
+        :disabled="processing">
+        <ExternalLink class="w-5 h-5 mr-2" />
         Clock Out
       </button>
     </div>
@@ -190,6 +185,7 @@ onUnmounted(() => {
           <SecondaryButton @click="showCheckInModal = false" class="mr-3">
             Cancel
           </SecondaryButton>
+
           <PrimaryButton @click="submitCheckIn" :disabled="processing">
             <span v-if="processing">Processing...</span>
             <span v-else>Confirm Check In</span>

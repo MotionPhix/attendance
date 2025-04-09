@@ -207,6 +207,7 @@ class SettingsSeeder extends Seeder
         'description' => 'Enable email notifications',
         'is_public' => false,
       ],
+
       [
         'key' => 'notification_email',
         'value' => 'admin@example.com',
@@ -214,6 +215,19 @@ class SettingsSeeder extends Seeder
         'type' => 'text',
         'description' => 'Email address for notifications',
         'is_public' => false,
+      ],
+
+      [
+        'key' => 'tax_brackets',
+        'value' => json_encode([
+          ['from' => 0, 'to' => 1000, 'rate' => 10],
+          ['from' => 1001, 'to' => 3000, 'rate' => 15],
+          ['from' => 3001, 'to' => null, 'rate' => 20],
+        ]),
+        'group' => 'salary',
+        'type' => 'json',
+        'description' => 'Progressive tax brackets',
+        'is_public' => true,
       ],
     ];
 

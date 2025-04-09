@@ -1,6 +1,7 @@
 
 <?php
 
+use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\EmployeeController;
@@ -84,6 +85,9 @@ Route::middleware(['auth', 'verified', 'role:admin|hr|manager', 'redirect.role']
   Route::get('reports/salary/department', [ReportController::class, 'departmentSalary'])->name('reports.salary.department');
   Route::get('reports/leave', [ReportController::class, 'leaveReport'])->name('reports.leave');
   Route::get('reports/export/{type}', [ReportController::class, 'exportReport'])->name('reports.export');
+
+  // Add these lines to routes/admin.php inside the admin group
+  Route::resource('attendance', AttendanceController::class);
 
   // System Settings
   Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
