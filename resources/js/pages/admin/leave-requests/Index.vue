@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Check, CalendarOff, X } from 'lucide-vue-next'
 import { toast } from 'vue-sonner';
 import EmptyState from '@/components/EmptyState.vue';
+import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 
 interface LeaveRequest {
   id: number
@@ -177,6 +178,16 @@ const handleDayClick = (_day: any, event: Event) => {
     event.target.blur()
   }
 }
+
+// Breadcrumbs
+const breadcrumbs = [
+  { label: 'Dashboard', href: route('admin.dashboard') },
+  { label: 'Leave requests' }
+];
+
+const { setPageBreadcrumbs } = useBreadcrumbs();
+
+setPageBreadcrumbs(breadcrumbs);
 </script>
 
 <template>

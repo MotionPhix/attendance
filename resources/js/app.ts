@@ -1,5 +1,5 @@
 import '../css/app.css';
-import 'v-calendar/style.css';
+import '@angelblanco/v-calendar/dist/style.css' // 'v-calendar/style.css';
 
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -9,7 +9,7 @@ import { ZiggyVue } from 'ziggy-js';
 import { renderApp, ModalLink } from '@inertiaui/modal-vue'
 import { createPinia } from 'pinia'
 import VueApexCharts from "vue3-apexcharts";
-import { setupCalendar, Calendar, DatePicker } from 'v-calendar';
+import { setupCalendar, Calendar, DatePicker } from '@angelblanco/v-calendar' // 'v-calendar';
 
 import { initializeTheme } from './composables/useAppearance';
 
