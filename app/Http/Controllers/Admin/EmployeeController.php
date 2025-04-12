@@ -43,6 +43,14 @@ class EmployeeController extends Controller
     ]);
   }
 
+  public function edit(Employee $employee)
+  {
+    return Inertia::render('admin/employees/Edit', [
+      'employee' => $employee->load('user', 'department'),
+      'departments' => Department::all()
+    ]);
+  }
+
   public function show(Employee $employee)
   {
     $employee->load(['user', 'department']);

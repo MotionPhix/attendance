@@ -7,6 +7,88 @@ import { computed, watch } from 'vue';
 import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 import { useAppearance } from '@/composables/useAppearance';
 
+interface EmployeeStats {
+  total: number
+  active: number
+  on_leave: number
+  by_department: Array<{
+    department: string
+    count: number
+  }>
+}
+
+interface AttendanceStats {
+  today: {
+    present: number
+    late: number
+    early_departure: number
+    absent: number
+  }
+  monthly_trends: Array<{
+    month: string
+    attendance_rate: number
+    late_arrivals: number
+    early_departures: number
+  }>
+}
+
+interface SalaryStats {
+  total_base_salary: number
+  total_deductions: number
+  total_bonuses: number
+  total_overtime_pay: number
+  total_net_amount: number
+  processed_count: number
+  paid_count: number
+}
+
+interface Activity {
+  type: 'check_in' | 'check_out' | 'leave_request'
+  user: string
+  time: string
+  details: string
+  status?: string
+}
+
+interface LeaveRequest {
+  id: number
+  user: {
+    name: string
+  }
+  leave_type: string
+  duration_days: number
+  start_date: string
+  end_date: string
+  status: string
+}
+
+interface TopPerformer {
+  user_id: number
+  name: string
+  attendance_rate: number
+  present_days: number
+  absent_days: number
+  total_days: number
+  late_arrivals: number
+  early_departures: number
+}
+
+// Update your props definition
+const props = defineProps<{
+  employeeStats: EmployeeStats
+  attendanceStats: AttendanceStats
+  salaryStats: SalaryStats
+  recentActivities: Activity[]
+  pendingLeaveRequests: LeaveRequest[]
+  topPerformers: TopPerformer[]
+  currentDate: string
+  currentMonth: string
+}>()
+
+// Get current theme
+const { appearance } = useAppearance();
+const isDarkMode = computed(() => appearance.value === 'dark');
+
 // Set breadcrumbs for this page
 const { setPageBreadcrumbs } = useBreadcrumbs();
 
@@ -14,21 +96,6 @@ setPageBreadcrumbs([
   { label: 'Home', href: '/' },
   { label: 'Dashboard' }
 ]);
-
-const props = defineProps({
-  employeeStats: Object,
-  attendanceStats: Object,
-  salaryStats: Object,
-  recentActivities: Array,
-  pendingLeaveRequests: Array,
-  topPerformers: Array,
-  currentDate: String,
-  currentMonth: String,
-});
-
-// Get current theme
-const { appearance } = useAppearance();
-const isDarkMode = computed(() => appearance.value === 'dark');
 
 // Format helpers
 const formatCurrency = (value) => {

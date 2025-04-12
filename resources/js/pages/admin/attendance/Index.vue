@@ -329,9 +329,20 @@ const table = useVueTable({
 
             <!-- Date Filter -->
             <div class="w-[250px]">
-              <VDatePicker v-model="filters.date">
+              <VDatePicker
+                v-model="filters.date"
+                @update:model-value="updateFilters"
+                :model-config="{
+                  type: 'string',
+                  format: 'yyyy-MM-dd'
+                }">
                 <template #default="{ inputValue, inputEvents }">
-                  <Input placeholder="Pick a date" :value="inputValue" v-on="inputEvents" />
+                  <Input
+                    placeholder="Pick a date"
+                    :value="inputValue"
+                    v-on="inputEvents"
+                    readonly
+                  />
                 </template>
               </VDatePicker>
             </div>
