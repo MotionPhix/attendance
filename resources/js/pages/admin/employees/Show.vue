@@ -248,7 +248,7 @@ onBeforeUnmount(() => {
     <div class="container py-6">
       <!-- Employee header -->
       <div class="mb-6 flex items-center gap-4">
-        <img :src="employee.user.avatar || `/avatars/default.png`" :alt="employee.user.name" class="h-20 w-20 rounded-full object-cover" />
+        <img :src="employee.user.avatar_url" :alt="employee.user.name" class="h-20 w-20 rounded-full object-cover" />
 
         <div>
           <h1 class="text-2xl font-semibold">

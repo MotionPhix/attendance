@@ -25,38 +25,17 @@ import { debounce } from 'lodash'
 import { toast } from 'vue-sonner';
 import EmptyState from '@/components/EmptyState.vue';
 import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
-
-interface Department {
-  id: number
-  name: string
-}
-
-interface Employee {
-  id: number
-  user: {
-    id: number
-    name: string
-    email: string
-    avatar?: string
-  }
-  department: Department
-  position: string
-  employee_id: string
-  join_date: string
-  status: 'active' | 'inactive' | 'on_leave'
-}
+import { Department, Employee } from '@/types';
 
 interface Props {
   employees: {
     data: Employee[]
-    meta: {
-      current_page: number
-      from: number
-      last_page: number
-      per_page: number
-      to: number
-      total: number
-    }
+    current_page: number
+    from: number
+    last_page: number
+    per_page: number
+    to: number
+    total: number
   }
   departments: Department[]
   filters: {
@@ -266,9 +245,10 @@ setPageBreadcrumbs([
               <TableCell>
                 <div class="flex items-center gap-3">
                   <img
-                    :src="employee.user?.avatar || `/avatars/default.png`"
+                    :src="employee.user.avatar_url"
                     :alt="employee.user?.name"
-                    class="h-8 w-8 rounded-full">
+                    class="size-10 object-cover rounded-lg">
+
                   <div>
                     <div class="font-medium">
                       {{ employee.user?.name }}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3'
 import GlobalModal from '@/components/GlobalModal.vue'
 import { Button } from '@/components/ui/button'
@@ -13,25 +13,8 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'vue-sonner'
 import { Edit2 } from 'lucide-vue-next'
-
-interface Department {
-  id: number
-  name: string
-}
-
-interface Employee {
-  id: number
-  user: {
-    name: string
-    email: string
-  }
-  department: Department
-  position: string
-  hire_date: string
-  base_salary: number
-  hourly_rate: number | null
-  status: 'active' | 'on_leave' | 'suspended' | 'terminated'
-}
+import AvatarUpload from '@/components/AvatarUpload.vue';
+import { Department, Employee } from '@/types';
 
 interface Props {
   employee: Employee
@@ -41,6 +24,8 @@ interface Props {
 const props = defineProps<Props>()
 const processing = ref(false)
 const editEmployeeRef = ref()
+const avatarFile = ref<File | null>(null)
+const uploadingAvatar = ref(false)
 
 const form = ref({
   name: props.employee.user.name,
@@ -69,6 +54,42 @@ const handleSubmit = () => {
     },
   })
 }
+
+const handleAvatarUpload = () => {
+  if (!avatarFile.value) return
+
+  const formData = new FormData()
+  formData.append('avatar', avatarFile.value)
+
+  uploadingAvatar.value = true
+
+  router.post(route('admin.employees.update-avatar', props.employee.id), formData, {
+    preserveState: true,
+    preserveScroll: true,
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Avatar has been updated.',
+      })
+    },
+    onError: (errors) => {
+      toast({
+        title: 'Error',
+        description: errors.avatar || 'Failed to update avatar',
+        variant: 'destructive'
+      })
+    },
+    onFinish: () => {
+      uploadingAvatar.value = false
+    }
+  })
+}
+
+watch(avatarFile, (newFile) => {
+  if (newFile) {
+    handleAvatarUpload()
+  }
+})
 </script>
 
 <template>
@@ -79,6 +100,15 @@ const handleSubmit = () => {
     :icon="Edit2"
     maxWidth="xl">
     <form class="space-y-4">
+      <div class="flex justify-center">
+        <AvatarUpload
+          v-model="avatarFile"
+          :current-avatar="employee.user.avatar"
+          :uploading="uploadingAvatar"
+          size="lg"
+        />
+      </div>
+
       <div class="grid gap-2">
         <label for="name">Full Name</label>
         <Input

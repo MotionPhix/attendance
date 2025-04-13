@@ -36,6 +36,8 @@ Route::middleware(['auth', 'verified', 'role:admin|hr|manager', 'redirect.role']
   Route::resource('employees', EmployeeController::class);
   Route::get('employees/{employee}/attendance', [EmployeeController::class, 'attendance'])->name('employees.attendance');
   Route::get('employees/{employee}/salary', [EmployeeController::class, 'salary'])->name('employees.salary');
+  Route::post('employees/{employee}/avatar', [EmployeeController::class, 'updateAvatar'])
+    ->name('employees.update-avatar');
 
   // Work Schedule Management
   Route::resource('work-schedules', WorkScheduleController::class);

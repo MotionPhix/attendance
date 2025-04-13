@@ -19,7 +19,7 @@ class EmployeeController extends Controller
 {
   public function index(Request $request)
   {
-    $query = Employee::with(['user', 'department'])
+    $query = Employee::with(['user.media', 'department'])
       ->when($request->search, function ($query, $search) {
         $query->whereHas('user', function ($query) use ($search) {
           $query->where('name', 'like', "%{$search}%")
@@ -53,7 +53,7 @@ class EmployeeController extends Controller
 
   public function show(Employee $employee)
   {
-    $employee->load(['user', 'department']);
+    $employee->load(['user.media', 'department']);
 
     return Inertia::render('admin/employees/Show', [
       'employee' => $employee,
@@ -138,6 +138,24 @@ class EmployeeController extends Controller
 
       return $employee;
     });
+  }
+
+  public function updateAvatar(Request $request, Employee $employee)
+  {
+    $request->validate([
+      'avatar' => ['required', 'image', 'max:2048'] // 2MB max
+    ]);
+
+    // Clear old avatar if it exists
+    $employee->user->clearMediaCollection('avatar');
+
+    // Add new avatar
+    $employee->user->addMediaFromRequest('avatar')
+      ->usingName($employee->user->name)
+      ->usingFileName($request->file('avatar')->hashName())
+      ->toMediaCollection('avatar');
+
+    return back();
   }
 
   public function destroy(Employee $employee)
