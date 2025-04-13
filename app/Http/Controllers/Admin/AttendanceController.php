@@ -89,6 +89,8 @@ class AttendanceController extends Controller
 
   public function show(AttendanceLog $attendance)
   {
+    $user = $attendance->user;
+
     return Inertia::render('admin/attendance/Show', [
       'attendance' => [
         'id' => $attendance->id,
@@ -96,6 +98,14 @@ class AttendanceController extends Controller
           'id' => $attendance->user->id,
           'name' => $attendance->user->name,
           'email' => $attendance->user->email,
+          'avatar_url' => $user->avatar_url, // This will use the model's avatarUrl attribute
+          // Include the media information if it exists
+          'media' => $user->getFirstMedia('avatar') ? [
+              $user->getFirstMedia('avatar')->toArray() + [
+                'original_url' => $user->getFirstMedia('avatar')->getUrl(),
+                'preview_url' => $user->getFirstMedia('avatar')->getUrl('thumb'),
+              ]
+          ] : [],
         ],
         'date' => $attendance->check_in_time?->format('Y-m-d'),
         'check_in_time' => $attendance->check_in_time?->format('H:i:s'),

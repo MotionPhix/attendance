@@ -1,22 +1,24 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
-import AppLayout from '@/layouts/AppLayout.vue';
+import AppLayout from '@/layouts/MainAppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { type BreadcrumbItem } from '@/types';
+import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 
-const breadcrumbItems: BreadcrumbItem[] = [
-    {
-        title: 'Password settings',
-        href: '/settings/password',
-    },
-];
+const user = usePage().props.auth.user;
+
+const { setPageBreadcrumbs } = useBreadcrumbs();
+
+setPageBreadcrumbs([
+  { label: user.isAdmin ? 'Dashboard' : 'Home', href: user.isAdmin ? route('admin.dashboard') : route('dashboard') },
+  { label: 'Password Reset' },
+]);
 
 const passwordInput = ref<HTMLInputElement | null>(null);
 const currentPasswordInput = ref<HTMLInputElement | null>(null);
@@ -51,7 +53,7 @@ const updatePassword = () => {
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbItems">
+    <AppLayout>
         <Head title="Password settings" />
 
         <SettingsLayout>

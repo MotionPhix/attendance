@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { type BreadcrumbItem } from '@/types';
 
-import AppLayout from '@/layouts/AppLayout.vue';
+import AppLayout from '@/layouts/MainAppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
+import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
@@ -14,10 +15,21 @@ const breadcrumbItems: BreadcrumbItem[] = [
         href: '/settings/appearance',
     },
 ];
+
+const user = usePage().props.auth.user;
+
+const { setPageBreadcrumbs } = useBreadcrumbs();
+
+setPageBreadcrumbs([
+  { label: user.isAdmin ? 'Dashboard' : 'Home', href: user.isAdmin ? route('admin.dashboard') : route('dashboard') },
+  { label: 'Appearance Settings' },
+]);
+
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbItems">
+    <AppLayout>
+
         <Head title="Appearance settings" />
 
         <SettingsLayout>

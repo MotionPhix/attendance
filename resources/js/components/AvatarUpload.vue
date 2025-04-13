@@ -7,7 +7,8 @@ import { User } from '@/types';
 interface Props {
   modelValue?: File | null
   user?: User
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'custom'
+  customSize?: string
   shape?: 'square' | 'circle'
   uploading?: boolean
 }
@@ -30,6 +31,7 @@ const containerSize = computed(() => {
   switch (props.size) {
     case 'sm': return 'h-20 w-20'
     case 'lg': return 'h-32 w-32'
+    case 'custom': return props.customSize
     default: return 'h-24 w-24'
   }
 })

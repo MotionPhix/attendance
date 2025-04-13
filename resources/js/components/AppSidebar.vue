@@ -114,8 +114,10 @@ const footerNavItems: NavItem[] = [
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton size="lg" as-child>
-            <Link :href="isAdmin ? '/admin/dashboard' : '/dashboard'">
-              <AppLogo />
+            <Link 
+              :href="isAdmin ? '/admin/dashboard' : '/dashboard'"
+              class="font-bold text-xl text-muted-">
+              {{ $page.props.name }}
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
