@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import AppLayout from '@/Layouts/MainAppLayout.vue';
-import { Link } from '@inertiajs/vue3';
+import AppLayout from '@/layouts/MainAppLayout.vue';
+import { Link, Head } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
 import { Calculator, Calendar, ClipboardCheck, DollarSign, FileText, LogIn, LogOut, Users } from 'lucide-vue-next';
 import { computed, watch } from 'vue';
 import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
-import { useAppearance } from '@/composables/useAppearance';
+import { useDark } from '@vueuse/core';
 
 interface EmployeeStats {
   total: number
@@ -86,8 +86,7 @@ const props = defineProps<{
 }>()
 
 // Get current theme
-const { appearance } = useAppearance();
-const isDarkMode = computed(() => appearance.value === 'dark');
+const isDarkMode = useDark();
 
 // Set breadcrumbs for this page
 const { setPageBreadcrumbs } = useBreadcrumbs();
@@ -490,7 +489,9 @@ watch(() => isDarkMode.value, () => {
 </script>
 
 <template>
-  <AppLayout title="Admin Dashboard">
+  <AppLayout>
+    <Head title="Admin Dashboard" />
+
     <div class="py-12">
       <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
         <!-- Date and Quick Stats -->

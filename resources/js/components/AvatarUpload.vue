@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { router } from '@inertiajs/vue3'
-import { Button } from '@/components/ui/button'
+import { ref, computed, onMounted, watch } from 'vue';
 import { Camera, Loader2 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import { User } from '@/types';
 
 interface Props {
   modelValue?: File | null
-  currentAvatar?: string
+  user?: User
   size?: 'sm' | 'md' | 'lg'
   shape?: 'square' | 'circle'
   uploading?: boolean
@@ -16,7 +15,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   size: 'md',
   shape: 'circle',
-  uploading: false
+  uploading: false,
+  user: undefined
 })
 
 const emit = defineEmits<{
@@ -34,7 +34,15 @@ const containerSize = computed(() => {
   }
 })
 
-const previewImage = ref<string>(props.currentAvatar || '/avatars/default.png')
+// Get the current avatar URL from either the uploaded media or the default avatar system
+const getCurrentAvatarUrl = computed(() => {
+  if (props.user) {
+    return props.user.avatar_url
+  }
+  return '/avatars/default.png'
+})
+
+const previewImage = ref<string>(getCurrentAvatarUrl.value)
 
 const handleDrop = (e: DragEvent) => {
   e.preventDefault()
@@ -45,29 +53,51 @@ const handleDrop = (e: DragEvent) => {
   }
 }
 
-const handleFileChange = (file: File) => {
-  if (file) {
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload an image file',
-        variant: 'destructive'
-      })
-      return
-    }
+const handleFileChange = (file: File | undefined) => {
+  if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      previewImage.value = e.target?.result as string
-    }
-    reader.readAsDataURL(file)
-    emit('update:modelValue', file)
+  if (!file.type.startsWith('image/')) {
+    toast({
+      title: 'Invalid file type',
+      description: 'Please upload an image file',
+      variant: 'destructive'
+    })
+    return
   }
+
+  // Check file size (max 2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    toast({
+      title: 'File too large',
+      description: 'Image must be less than 2MB',
+      variant: 'destructive'
+    })
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    previewImage.value = e.target?.result as string
+  }
+  reader.readAsDataURL(file)
+  emit('update:modelValue', file)
 }
 
 const triggerFileInput = () => {
   fileInput.value?.click()
 }
+
+// Reset preview image when user prop changes
+watch(() => props.user, (newUser) => {
+  if (newUser) {
+    previewImage.value = getCurrentAvatarUrl.value
+  }
+})
+
+// Initialize with current avatar on mount
+onMounted(() => {
+  previewImage.value = getCurrentAvatarUrl.value
+})
 </script>
 
 <template>
@@ -92,9 +122,9 @@ const triggerFileInput = () => {
 
     <img
       :src="previewImage"
-      :alt="'Avatar'"
+      :alt="user?.name || 'Avatar'"
       :class="[
-        'w-full h-full object-cover transition-opacity duration-300',
+        'w-full h-full object-cover transition-opacity duration-300 bg-muted',
         { 'opacity-50': uploading }
       ]"
     >

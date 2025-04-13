@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Head, router } from '@inertiajs/vue3'
+import { ref, watch, computed } from 'vue';
+import { Head, router, Link } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/MainAppLayout.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,7 +30,8 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 import { h } from 'vue'
-import { format } from 'date-fns'
+import { debounce } from 'lodash'
+import { format, parseISO } from 'date-fns'
 import {
   Clock,
   Download,
@@ -43,12 +44,9 @@ import {
   CheckCircle, Trash2
 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner'
-
-interface User {
-  id: number
-  name: string
-  email: string
-}
+import { User } from '@/types';
+import { useDark } from '@vueuse/core';
+import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 
 interface AttendanceRecord {
   id: number
@@ -62,6 +60,26 @@ interface AttendanceRecord {
   notes: string | null
 }
 
+interface AttendancePagination {
+  current_page: number
+  data: AttendanceRecord[]
+  first_page_url: string
+  from: number
+  last_page: number
+  last_page_url: string
+  links: {
+    url: string | null
+    label: string
+    active: boolean
+  }[]
+  next_page_url: string | null
+  path: string
+  per_page: number
+  prev_page_url: string | null
+  to: number
+  total: number
+}
+
 interface Stats {
   total_employees: number
   present: number
@@ -71,10 +89,7 @@ interface Stats {
 }
 
 interface Props {
-  attendance: {
-    data: AttendanceRecord[]
-    links: any[]
-  }
+  attendance: AttendancePagination
   filters: {
     search?: string
     date?: string
@@ -85,10 +100,19 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// Filters
+const isDark = useDark()
+
+const { setPageBreadcrumbs } = useBreadcrumbs();
+
+setPageBreadcrumbs([
+  { label: 'Dashboard', href: route('admin.dashboard') },
+  { label: 'Attendance', href: route('admin.attendance.index') },
+]);
+
+// Initialize filters with proper date handling
 const filters = ref({
   search: props.filters.search || '',
-  date: props.filters.date ? new Date(props.filters.date) : null,
+  date: props.filters.date ? parseISO(props.filters.date) : new Date(),
   status: props.filters.status || null,
 })
 
@@ -105,9 +129,9 @@ const updateFilters = () => {
   router.get(
     route('admin.attendance.index'),
     {
-      search: filters.value.search,
+      search: filters.value.search || null,
       date: filters.value.date ? format(filters.value.date, 'yyyy-MM-dd') : null,
-      status: filters.value.status,
+      status: filters.value.status || null,
     },
     {
       preserveState: true,
@@ -125,6 +149,11 @@ const resetFilters = () => {
   }
   updateFilters()
 }
+
+// Debounced search update
+const debouncedSearch = debounce(() => {
+  updateFilters()
+}, 300)
 
 // Export attendance
 const exportAttendance = () => {
@@ -151,6 +180,18 @@ const deleteAttendance = (id: number) => {
   }
 }
 
+// Format time to show in 12-hour format with AM/PM
+const formatTime = (time: string | null) => {
+  if (!time) return '—'
+  const [hours, minutes] = time.split(':')
+  const date = new Date(2025, 0, 1, parseInt(hours), parseInt(minutes))
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  })
+}
+
 // Status badge styling
 const getStatusBadgeClasses = (status: string) => {
   const classes = {
@@ -162,35 +203,47 @@ const getStatusBadgeClasses = (status: string) => {
   return `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${classes[status] || ''}`
 }
 
-// Table columns
+// Format date to be more readable
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('en-US', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+// Table columns update
 const columnHelper = createColumnHelper<AttendanceRecord>()
 
 const columns = [
   columnHelper.accessor('user.name', {
     header: 'Employee',
     cell: ({ row }) => {
-      return h('div', [
+      return h('div', { class: 'min-w-[200px]' }, [
         h('div', { class: 'font-medium' }, row.original.user.name),
         h('div', { class: 'text-sm text-muted-foreground' }, row.original.user.email)
       ])
     },
   }),
   columnHelper.accessor('date', {
-    header: 'Date'
+    header: 'Date',
+    cell: ({ row }) => formatDate(row.original.date)
   }),
   columnHelper.accessor('check_in_time', {
-    header: 'Check In'
+    header: 'Check In',
+    cell: ({ row }) => formatTime(row.original.check_in_time)
   }),
   columnHelper.accessor('check_out_time', {
     header: 'Check Out',
-    cell: ({ row }) => h('div', {}, row.original.check_out_time || '-')
+    cell: ({ row }) => formatTime(row.original.check_out_time)
   }),
   columnHelper.accessor('status', {
     header: 'Status',
     cell: ({ row }) => {
       const status = row.original.status
       return h('span', {
-        class: getStatusBadgeClasses(status)
+        class: `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClasses(status)}`
       }, status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1))
     }
   }),
@@ -200,18 +253,23 @@ const columns = [
     cell: ({ row }) => {
       const record = row.original
       if (!record.late_minutes && !record.early_departure_minutes)
-        return h('div', {}, '-')
+        return h('div', { class: 'text-center' }, '—')
 
-      return h('div', { class: 'text-sm' }, [
-        record.late_minutes > 0 && h('div', { class: 'text-yellow-600' }, `Late: ${record.late_minutes} mins`),
-        record.early_departure_minutes > 0 && h('div', { class: 'text-orange-600' }, `Early: ${record.early_departure_minutes} mins`)
+      return h('div', { class: 'text-sm space-y-1' }, [
+        record.late_minutes > 0 && h('div', { class: 'text-yellow-600' },
+          `Late: ${record.late_minutes} mins`
+        ),
+        record.early_departure_minutes > 0 && h('div', { class: 'text-orange-600' },
+          `Early: ${record.early_departure_minutes} mins`
+        )
       ].filter(Boolean))
     }
   }),
   columnHelper.display({
     id: 'actions',
+    header: '',
     cell: ({ row }) => {
-      return h('div', { class: 'flex items-center gap-2' }, [
+      return h('div', { class: 'flex items-center gap-2 justify-end' }, [
         h(Button, {
           variant: 'ghost',
           size: 'icon',
@@ -234,13 +292,37 @@ const columns = [
   })
 ]
 
-const table = useVueTable({
-  data: props.attendance.data,
-  columns,
-  getCoreRowModel: getCoreRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
+const tableData = ref(props.attendance.data)
+
+watch(() => props.attendance.data, (newData) => {
+  tableData.value = newData
+}, { immediate: true })
+
+const table = computed(() => 
+  useVueTable({
+    data: tableData.value,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  })
+)
+
+// Add pagination handling
+const handlePageChange = (url: string) => {
+  router.get(url, {
+    search: filters.value.search || null,
+    date: filters.value.date ? format(filters.value.date, 'yyyy-MM-dd') : null,
+    status: filters.value.status || null,
+  }, {
+    preserveState: true,
+    preserveScroll: true,
+  })
+}
+
+// Watch for search changes
+watch(() => filters.value.search, () => {
+  debouncedSearch()
 })
 </script>
 
@@ -330,6 +412,7 @@ const table = useVueTable({
             <!-- Date Filter -->
             <div class="w-[250px]">
               <VDatePicker
+                :is-dark="isDark" 
                 v-model="filters.date"
                 @update:model-value="updateFilters"
                 :model-config="{
@@ -380,7 +463,6 @@ const table = useVueTable({
       </Card>
 
       <!-- Attendance Table -->
-      <!-- Attendance Table -->
       <div class="rounded-md border">
         <Table>
           <TableHeader>
@@ -395,10 +477,12 @@ const table = useVueTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            <template v-if="table.getRowModel().rows?.length">
+            <template v-if="attendance.data.length">
               <TableRow
                 v-for="row in table.getRowModel().rows"
-                :key="row.id">
+                :key="row.id"
+                class="hover:bg-muted/50"
+              >
                 <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
                   <FlexRender
                     :render="cell.column.columnDef.cell"
@@ -409,11 +493,37 @@ const table = useVueTable({
             </template>
             <TableRow v-else>
               <TableCell :colspan="columns.length" class="h-24 text-center">
-                No results.
+                No attendance records found.
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="attendance.total > 0" class="mt-4 flex items-center justify-between">
+        <div class="text-sm text-muted-foreground">
+          Showing {{ attendance.from }} to {{ attendance.to }} of {{ attendance.total }} records
+        </div>
+
+        <div class="flex items-center gap-2">
+          <template v-for="link in attendance.links" :key="link.label">
+            <Button
+              v-if="link.url"
+              :variant="link.active ? 'default' : 'outline'"
+              size="sm"
+              @click="handlePageChange(link.url)"
+              v-html="link.label"
+            />
+            <Button
+              v-else
+              variant="outline"
+              size="sm"
+              disabled
+              v-html="link.label"
+            />
+          </template>
+        </div>
       </div>
     </div>
   </AppLayout>

@@ -9,31 +9,21 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
-class AttendanceController extends Controller
+class AttendanceController_ extends Controller
 {
   public function index(Request $request)
   {
-    // Validate the request parameters
-    $validated = $request->validate([
-      'search' => ['nullable', 'string', 'max:100'],
-      'date' => ['nullable', 'date_format:Y-m-d'],
-      'status' => ['nullable', 'string', 'in:present,absent,late,early_departure'],
-    ]);
-
-    // Get the date to filter by (default to today if not provided)
-    $date = $validated['date'] ?? now()->format('Y-m-d');
-
     $query = AttendanceLog::with('user')
-      ->when($validated['search'] ?? null, function ($query, $search) {
+      ->when($request->search, function ($query, $search) {
         $query->whereHas('user', function ($q) use ($search) {
           $q->where('name', 'like', "%{$search}%")
             ->orWhere('email', 'like', "%{$search}%");
         });
       })
-      ->when($date, function ($query, $date) {
+      ->when($request->date, function ($query, $date) {
         $query->whereDate('check_in_time', $date);
       })
-      ->when($validated['status'] ?? null, function ($query, $status) {
+      ->when($request->status, function ($query, $status) {
         switch ($status) {
           case 'late':
             $query->where('late_minutes', '>', 0);
@@ -42,19 +32,13 @@ class AttendanceController extends Controller
             $query->where('early_departure_minutes', '>', 0);
             break;
           case 'present':
-            $query->whereNotNull('check_in_time')
-              ->where('late_minutes', 0)
-              ->where('early_departure_minutes', 0);
+            $query->whereDate('check_in_time', today())
+              ->whereNotNull('check_in_time');
             break;
           case 'absent':
-            // Get all users who don't have an attendance record for this date
-            $query->whereNull('check_in_time')
-              ->orWhereNotExists(function ($q) use ($date) {
-                $q->select('id')
-                  ->from('attendance_logs')
-                  ->whereColumn('attendance_logs.user_id', 'users.id')
-                  ->whereDate('check_in_time', $date);
-              });
+            // This might need a more complex query depending on your business logic
+            $query->whereDate('check_in_time', today())
+              ->whereNull('check_in_time');
             break;
         }
       })
@@ -78,12 +62,8 @@ class AttendanceController extends Controller
           'notes' => $record->notes,
         ];
       }),
-      'filters' => [
-        'search' => $validated['search'] ?? '',
-        'date' => $date,
-        'status' => $validated['status'] ?? null,
-      ],
-      'stats' => $this->getAttendanceStats($date),
+      'filters' => $request->only(['search', 'date', 'status']),
+      'stats' => $this->getAttendanceStats(),
     ]);
   }
 
@@ -201,36 +181,24 @@ class AttendanceController extends Controller
     return 'present';
   }
 
-  // Update the stats method to accept a date parameter
-  private function getAttendanceStats($date = null): array
+  private function getAttendanceStats(): array
   {
-    $date = $date ? Carbon::parse($date) : Carbon::today();
+    $today = Carbon::today();
     $totalEmployees = User::count();
 
-    $stats = [
+    $todayStats = [
       'total_employees' => $totalEmployees,
-      'present' => AttendanceLog::whereDate('check_in_time', $date)
-        ->whereNotNull('check_in_time')
-        ->where('late_minutes', 0)
-        ->where('early_departure_minutes', 0)
-        ->count(),
-      'late' => AttendanceLog::whereDate('check_in_time', $date)
+      'present' => AttendanceLog::whereDate('check_in_time', $today)->count(),
+      'late' => AttendanceLog::whereDate('check_in_time', $today)
         ->where('late_minutes', '>', 0)
         ->count(),
-      'early_departure' => AttendanceLog::whereDate('check_in_time', $date)
+      'early_departure' => AttendanceLog::whereDate('check_in_time', $today)
         ->where('early_departure_minutes', '>', 0)
         ->count(),
     ];
 
-    // Calculate absences
-    $stats['absent'] = $totalEmployees - (
-      AttendanceLog::whereDate('check_in_time', $date)
-        ->whereNotNull('check_in_time')
-        ->distinct('user_id')
-        ->count()
-      );
+    $todayStats['absent'] = $totalEmployees - $todayStats['present'];
 
-    return $stats;
+    return $todayStats;
   }
-
 }

@@ -232,10 +232,9 @@ setPageBreadcrumbs([
               <TableHead>Employee</TableHead>
               <TableHead>Department</TableHead>
               <TableHead>Position</TableHead>
-              <TableHead>Employee ID</TableHead>
-              <TableHead>Join Date</TableHead>
+              <TableHead>Employee Id</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead class="w-[100px]">Actions</TableHead>
+              <TableHead class="w-[100px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -247,7 +246,7 @@ setPageBreadcrumbs([
                   <img
                     :src="employee.user.avatar_url"
                     :alt="employee.user?.name"
-                    class="size-10 object-cover rounded-lg">
+                    class="h-20 w-16 object-cover rounded-lg shrink-0">
 
                   <div>
                     <div class="font-medium">
@@ -262,10 +261,9 @@ setPageBreadcrumbs([
               <TableCell>{{ employee.department?.name }}</TableCell>
               <TableCell>{{ employee.position }}</TableCell>
               <TableCell>{{ employee.employee_id }}</TableCell>
-              <TableCell>{{ new Date(employee.join_date).toLocaleDateString() }}</TableCell>
               <TableCell>
                 <span
-                  class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium"
+                  class="inline-flex capitalize items-center rounded-full px-2 py-1 text-xs font-medium"
                   :class="getStatusColor(employee.status)">
                   {{ employee.status?.replace('_', ' ') }}
                 </span>
